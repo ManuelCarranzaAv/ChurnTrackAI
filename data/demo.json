@@ -1,0 +1,110 @@
+[
+  {
+    "cliente_id": "B2B-001",
+    "antiguedad": 48,
+    "compras_mensuales": 10,
+    "monto_promedio": 2500,
+    "reclamos": 0,
+    "dias_ultima_compra": 5,
+    "pagos_atrasados": 0
+  },
+  {
+    "cliente_id": "B2B-002",
+    "antiguedad": 8,
+    "compras_mensuales": 2,
+    "monto_promedio": 1200,
+    "reclamos": 5,
+    "dias_ultima_compra": 95,
+    "pagos_atrasados": 3
+  },
+  {
+    "cliente_id": "B2B-003",
+    "antiguedad": 24,
+    "compras_mensuales": 5,
+    "monto_promedio": 800,
+    "reclamos": 2,
+    "dias_ultima_compra": 30,
+    "pagos_atrasados": 1
+  },
+  {
+    "cliente_id": "B2B-004",
+    "antiguedad": 36,
+    "compras_mensuales": 12,
+    "monto_promedio": 4300,
+    "reclamos": 0,
+    "dias_ultima_compra": 12,
+    "pagos_atrasados": 0
+  },
+  {
+    "cliente_id": "B2B-005",
+    "antiguedad": 12,
+    "compras_mensuales": 3,
+    "monto_promedio": 2100,
+    "reclamos": 3,
+    "dias_ultima_compra": 65,
+    "pagos_atrasados": 2
+  },
+  {
+    "cliente_id": "B2B-006",
+    "antiguedad": 6,
+    "compras_mensuales": 1,
+    "monto_promedio": 450,
+    "reclamos": 6,
+    "dias_ultima_compra": 110,
+    "pagos_atrasados": 5
+  },
+  {
+    "cliente_id": "B2B-007",
+    "antiguedad": 54,
+    "compras_mensuales": 14,
+    "monto_promedio": 3600,
+    "reclamos": 1,
+    "dias_ultima_compra": 8,
+    "pagos_atrasados": 0
+  },
+  {
+    "cliente_id": "B2B-008",
+    "antiguedad": 18,
+    "compras_mensuales": 6,
+    "monto_promedio": 1600,
+    "reclamos": 1,
+    "dias_ultima_compra": 35,
+    "pagos_atrasados": 1
+  },
+  {
+    "cliente_id": "B2B-009",
+    "antiguedad": 30,
+    "compras_mensuales": 4,
+    "monto_promedio": 2900,
+    "reclamos": 4,
+    "dias_ultima_compra": 72,
+    "pagos_atrasados": 2
+  },
+  {
+    "cliente_id": "B2B-010",
+    "antiguedad": 42,
+    "compras_mensuales": 9,
+    "monto_promedio": 1800,
+    "reclamos": 0,
+    "dias_ultima_compra": 20,
+    "pagos_atrasados": 0
+  },
+  {
+    "cliente_id": "B2B-011",
+    "antiguedad": 20,
+    "compras_mensuales": 2,
+    "monto_promedio": 800,
+    "reclamos": 1,
+    "dias_ultima_compra": 30,
+    "pagos_atrasados": 2
+  },
+  {
+    "cliente_id": "B2B-012",
+    "antiguedad": 9,
+    "compras_mensuales": 5,
+    "monto_promedio": 900,
+    "reclamos": 2,
+    "dias_ultima_compra": 50,
+    "pagos_atrasados": 1
+  }
+]

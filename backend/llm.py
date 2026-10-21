@@ -13,6 +13,19 @@ La red neuronal ya calculó la probabilidad: no la cambies. La aprobación corre
 class ProviderError(Exception):
     pass
 
+def explain_error(code):
+    if code == 'LLM_NOT_CONFIGURED':
+        return 'Falta la clave de Gemini en el servidor. Puedes usar el análisis neuronal con reglas.'
+    if '401' in code or '403' in code or 'API_KEY' in code:
+        return 'Gemini rechazó la credencial o sus permisos. Revisa GEMINI_API_KEY en Render.'
+    if '429' in code:
+        return 'Gemini alcanzó su cuota. Revisa la cuota del proyecto en Google AI Studio.'
+    if '404' in code:
+        return 'El modelo configurado no está disponible para generar respuestas. Revisa GEMINI_MODEL.'
+    if '503' in code or 'Timeout' in code or 'Connect' in code:
+        return 'Gemini no está disponible o tardó demasiado. La red neuronal y las reglas siguen funcionando.'
+    return 'La respuesta de Gemini no pudo validarse. Se conservan las recomendaciones basadas en reglas.'
+
 class GeminiProvider:
     name = 'gemini'
     def __init__(self):

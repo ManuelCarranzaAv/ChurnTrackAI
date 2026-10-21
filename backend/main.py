@@ -18,7 +18,7 @@ from .agents import SupervisorAgent, ACTIONS
 from .model import NeuralModel, ROOT
 from .schemas import AnalysisRequest, Customer, Decision, FEATURES
 from .storage import Store
-from .llm import GeminiProvider
+from .llm import GeminiProvider, ProviderError, explain_error
 
 load_dotenv(ROOT / '.env')
 MAX_BODY = 256_000
@@ -101,6 +101,25 @@ def create_app(db_url=None):
         path = ROOT / 'models/evaluation.json'
         return json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'status':'pending','reason':'Evaluación pendiente'}
 
+    @app.get('/api/session',dependencies=[Depends(authorized)])
+    def session():
+        return {'authenticated':True,'llm_configured':bool(supervisor.retention.provider.key)}
+
+    @app.post('/api/llm/check',dependencies=[Depends(authorized)])
+    async def check_llm():
+        provider = supervisor.retention.provider
+        if not provider.key:
+            return {'available':False,'message':explain_error('LLM_NOT_CONFIGURED')}
+        if not store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50'))):
+            return {'available':False,'message':'Límite diario de llamadas alcanzado.'}
+        try:
+            response, usage = await provider.choose([{'index':0,'probability':0.1,'risk':'BAJO','observed':{'dias_ultima_compra':5},'allowed_actions':['monitor']}])
+            if len(response.choices)!=1 or response.choices[0].action!='monitor' or response.choices[0].index!=0 or response.choices[0].evidence!=['probability']:
+                raise ProviderError('UNSUPPORTED_RECOMMENDATION')
+            return {'available':True,'message':'Gemini respondió y su salida fue validada.','model':provider.model,'usage':usage}
+        except ProviderError as exc:
+            return {'available':False,'message':explain_error(str(exc)),'code':str(exc),'model':provider.model}
+
     async def execute(payload,persist=True,demo=False):
         if app.state.slots.locked():
             raise HTTPException(429,'Dos análisis en curso. Intenta nuevamente.')
@@ -108,8 +127,14 @@ def create_app(db_url=None):
             return await supervisor.run(payload,persist=persist,demo=demo)
 
     @app.post('/api/demo')
-    async def demo():
-        customers = json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
+    async def demo(size:int=12):
+        if size not in (12,300):
+            raise HTTPException(422,'La demostración admite 12 o 300 clientes sintéticos.')
+        if size == 300:
+            with (ROOT/'data/example-300.csv').open(encoding='utf-8') as source:
+                customers = list(csv.DictReader(source))
+        else:
+            customers = json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
         return await execute(AnalysisRequest(customers=customers),persist=False,demo=True)
 
     @app.post('/api/analyze',dependencies=[Depends(authorized)])

@@ -56,6 +56,10 @@ class Recommendation(StrictModel):
     rationale: str
     priority: Literal['URGENTE', 'ATENCION', 'NORMAL']
     source: Literal['rules', 'llm']
+    owner: str = ''
+    timeframe: str = ''
+    steps: list[str] = Field(default_factory=list)
+    success_check: str = ''
     decision: Literal['pending', 'approved', 'rejected'] = 'pending'
 
 class Message(StrictModel):

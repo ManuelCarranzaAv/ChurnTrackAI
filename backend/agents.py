@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from .schemas import AnalysisRequest, Message, Prediction, Recommendation, LLMResponse
-from .llm import ProviderError
+from .llm import ProviderError, explain_error
 from .analytics import portfolio
 
 def now():
@@ -19,6 +19,26 @@ ACTIONS = {
     'payments': ('Revisar pagos atrasados y evaluar alternativas', ['pagos_atrasados']),
     'review_data': ('Validar datos fuera del dominio antes de actuar', ['probability']),
 }
+
+PLANS = {
+    'contact': ('Ejecutivo comercial', ['Revisar el historial de compras y contacto.', 'Consultar necesidades y registrar la respuesta del cliente.'], 'Contacto registrado y siguiente paso acordado.'),
+    'monitor': ('Analista comercial', ['Revisar indicadores en el siguiente corte.', 'Comparar la frecuencia de compra con su historial.'], 'Nueva revisión registrada; no asumir retención lograda.'),
+    'reactivate': ('Ejecutivo comercial', ['Comprobar la fecha de la última compra.', 'Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad.'], 'Respuesta del cliente y oportunidad confirmada, si corresponde.'),
+    'claims': ('Atención al cliente', ['Revisar el estado y detalle de los reclamos.', 'Acordar un responsable y verificar la resolución con el cliente.'], 'Estado de cada reclamo actualizado y validado.'),
+    'payments': ('Cobranza y ejecutivo comercial', ['Validar vencimientos y posibles errores de registro.', 'Conversar sobre alternativas autorizadas por la empresa.'], 'Situación de pagos verificada y acuerdo documentado, si existe.'),
+    'review_data': ('Responsable de datos', ['Contrastar los valores con la fuente original.', 'Corregir errores o validar un modelo adecuado antes de decidir.'], 'Datos validados; no actuar basándose en una extrapolación.'),
+}
+
+def rule_action(p):
+    options = allowed(p)
+    if p.warnings or p.risk == 'BAJO':
+        return options[0]
+    feature_action = {'dias_ultima_compra':'reactivate','reclamos':'claims','pagos_atrasados':'payments'}
+    for factor in p.factors:
+        action = feature_action.get(factor.feature)
+        if factor.delta_probability > 0 and action in options:
+            return action
+    return options[0]
 
 def allowed(p):
     if p.warnings:
@@ -66,7 +86,9 @@ class RetentionAgent:
         evidence = evidence or ACTIONS[action][1]
         facts = {**p.observed, 'probability':round(p.probability,6)}
         reason = '; '.join(f'{key} = {facts[key]}' for key in evidence)
-        return Recommendation(cliente_id=p.cliente_id, action=action, evidence=evidence, rationale=f'{ACTIONS[action][0]}. Evidencia: {reason}. Validar el contexto con una persona.', priority={'ALTO':'URGENTE','MEDIO':'ATENCION','BAJO':'NORMAL'}[p.risk], source=source)
+        owner, steps, check = PLANS[action]
+        timeframe = 'Antes de actuar' if p.warnings else {'ALTO':'Propuesta: en 48 horas','MEDIO':'Propuesta: esta semana','BAJO':'Propuesta: próximo corte mensual'}[p.risk]
+        return Recommendation(cliente_id=p.cliente_id, action=action, evidence=evidence, rationale=f'{ACTIONS[action][0]}. Evidencia: {reason}. Validar el contexto con una persona.', priority={'ALTO':'URGENTE','MEDIO':'ATENCION','BAJO':'NORMAL'}[p.risk], source=source, owner=owner, steps=steps, timeframe=timeframe, success_check=check)
 
     async def execute(self, request, state, correction=False):
         selections = None
@@ -103,6 +125,10 @@ class RetentionAgent:
                 except ProviderError as exc:
                     selections = None
                     state.send('llm','retencion','provider_call', {'attempt':attempt+1,'error':str(exc)},'retry' if attempt == 0 else 'error')
+                    if attempt == 1 or any(x in str(exc) for x in ('HTTP_400','HTTP_401','HTTP_403','HTTP_404','HTTP_429')):
+                        state.warnings.append(explain_error(str(exc)))
+                        break
+                    await asyncio.sleep(0.5)
             if selections is None:
                 state.warnings.append('Proveedor LLM falló o devolvió evidencia inválida; se aplicaron reglas.')
         recs = []
@@ -111,8 +137,7 @@ class RetentionAgent:
                 choice = selections[i]
                 recs.append(self.materialize(p,choice.action,'llm',choice.evidence))
             else:
-                options = allowed(p)
-                recs.append(self.materialize(p, options[-1] if p.risk != 'BAJO' else options[0], 'rules'))
+                recs.append(self.materialize(p, rule_action(p), 'rules'))
         state.recommendations = recs
         state.send('retencion','supervisor','recommendations', {'source':state.mode,'outputs':[{'index':i,'action':r.action,'evidence':r.evidence,'priority':r.priority} for i,r in enumerate(recs)], 'correction':correction})
 
@@ -129,6 +154,8 @@ class SupervisorAgent:
             if r.cliente_id != p.cliente_id or r.action not in allowed(p) or r.priority != {'ALTO':'URGENTE','MEDIO':'ATENCION','BAJO':'NORMAL'}[p.risk] or r.decision != 'pending':
                 return False
             if not set(ACTIONS[r.action][1]).issubset(r.evidence) or not set(r.evidence).issubset({*p.observed,'probability'}):
+                return False
+            if (r.owner, r.steps, r.success_check) != PLANS[r.action]:
                 return False
         return True
 
@@ -158,6 +185,11 @@ class SupervisorAgent:
                 state.send('supervisor','usuario','execution_failed', {'error':type(exc).__name__},'error')
         run = state.model_dump()
         run['analytics'] = portfolio(state.predictions)
+        run['agent_report'] = {
+            'predictive': {'count':len(state.predictions),'out_of_domain':sum(bool(p.warnings) for p in state.predictions)},
+            'retention': {'llm_count':sum(r.source=='llm' for r in state.recommendations),'rules_count':sum(r.source=='rules' for r in state.recommendations),'actions':{action:sum(r.action==action for r in state.recommendations) for action in ACTIONS}},
+            'supervisor': {'validated':state.status=='completed','checks':['Correspondencia de clientes','Acciones compatibles con indicadores','Evidencia verificable','Plan de seguimiento y revisión humana'],'corrections':sum(m.tool=='request_correction' for m in state.trace)},
+        }
         run.update({'elapsed_ms':round((time.perf_counter()-start)*1000,2),'model_sha256':self.model.digest,'demo':demo,'summary':{'customers':len(state.predictions),'high':sum(p.risk=='ALTO' for p in state.predictions),'medium':sum(p.risk=='MEDIO' for p in state.predictions),'low':sum(p.risk=='BAJO' for p in state.predictions)}})
         if persist:
             self.store.save(run)

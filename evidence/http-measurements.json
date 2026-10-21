@@ -1,0 +1,31 @@
+{
+  "created": "2026-10-21T05:22:24.820049+00:00",
+  "base_url": "http://127.0.0.1:8000",
+  "scope": "LOCAL HTTP, not public production",
+  "measurements": {
+    "/health": {
+      "samples": 5,
+      "median_ms": 2.500099999451777,
+      "max_ms": 44.076800000766525,
+      "status": 200
+    },
+    "/": {
+      "samples": 5,
+      "median_ms": 3.289000000222586,
+      "max_ms": 116.11079999784124,
+      "status": 200
+    },
+    "/api/demo": {
+      "samples": 5,
+      "median_ms": 18.033600001217565,
+      "max_ms": 19.555099999706727,
+      "status": 200
+    }
+  },
+  "health": {
+    "status": "ok",
+    "model": "loaded",
+    "database": "ok",
+    "version": "1.0.0"
+  }
+}

@@ -2,7 +2,7 @@
 
 Plataforma académica de analítica predictiva B2B con red neuronal real y tres agentes coordinados: predictivo, retención y supervisor. Reutiliza los pesos de `modelo.js`, añade API Python, persistencia, dashboard y revisión humana.
 
-**Estado:** funciona y está probado localmente. La publicación HTTPS, el repositorio remoto y una llamada real a Gemini permanecen pendientes de acceso/configuración. No confundir los tests con dobles de prueba del proveedor con evidencia de un LLM real. El modelo fue entrenado con datos sintéticos y no está validado para decisiones empresariales.
+**Estado:** aplicación publicada en [https://churntrackai.onrender.com](https://churntrackai.onrender.com), código en [GitHub](https://github.com/ManuelCarranzaAv/ChurnTrackAI). Modelo académico sintético, no validado con empresas. La actualización incorpora acceso validado, demo pública de 300 clientes, planes de acción y resumen de agentes. Gemini está configurado en el servidor, pero la comprobación del 21/10/2026 devolvió HTTP 503; no se afirma generación exitosa.
 
 ## Inicio rápido
 
@@ -17,8 +17,8 @@ python -m venv .venv
 
 Abrir [la aplicación local](http://127.0.0.1:8000). `scripts/start.ps1` también inicia el servidor. En este entorno ya se creó `.venv`; si `ensurepip` no está disponible, un Python con pip puede instalar dentro de ella con `python -m pip --python .venv\Scripts\python.exe install -r requirements.txt`.
 
-1. Seleccionar **Explorar con datos de ejemplo** para ejecutar una inferencia real sobre 12 clientes ficticios.
-2. Para cargar datos y guardar resultados, abrir `.env` localmente, copiar el valor de `APP_API_KEY` y ponerlo en Configuración. No publicar ese archivo ni mostrarlo en el video.
+1. Seleccionar **Analizar 300 clientes de ejemplo** o **Explorar con datos de ejemplo** para ejecutar una inferencia real sobre datos ficticios sin contraseña.
+2. Para cargar datos y guardar resultados, abrir `.env` localmente, copiar el valor de `APP_API_KEY` y ponerlo en Configuración → Validar acceso y continuar. Esta clave es distinta de GEMINI_API_KEY; la interfaz rechaza una clave incorrecta antes de continuar. No publicar ese archivo ni mostrarlo en el video.
 3. En Análisis predictivo introducir un cliente o subir `data/template.csv`.
 4. Revisar Clientes y segmentos, Inteligencia multiagente y Recomendaciones.
 5. Aprobar o rechazar una recomendación. Se registra la decisión; no se envía correo ni se modifica un CRM.
@@ -26,7 +26,7 @@ Abrir [la aplicación local](http://127.0.0.1:8000). `scripts/start.ps1` tambié
 
 ## Activar el LLM real
 
-Obtener una clave en [Google AI Studio](https://aistudio.google.com/api-keys) e introducirla **solo** en `.env` o en las variables seguras de Render como `GEMINI_API_KEY`. Mantener `GEMINI_MODEL=gemini-2.5-flash-lite`, sujeto a disponibilidad de la cuenta. Reiniciar el servicio después de configurar. No se solicitan secretos por chat.
+Obtener una clave en [Google AI Studio](https://aistudio.google.com/api-keys) e introducirla **solo** en `.env` o en las variables seguras de Render como `GEMINI_API_KEY`. Mantener `GEMINI_MODEL=gemini-3.1-flash-lite`, sujeto a disponibilidad de la cuenta. Reiniciar el servicio después de configurar. No se solicitan secretos por chat.
 
 Marcar **Solicitar selección de acciones al LLM** y el consentimiento para procesar indicadores sin identificadores. La traza debe mostrar `structured_selection_request`, `validated_json`, `mode=llm` y metadatos de consumo de Gemini. Si no hay clave, cuota o respuesta válida, el informe avisa y marca `mode=rules`. El LLM elige acciones permitidas y evidencia; el texto explicativo se construye con los datos verificados.
 
@@ -105,4 +105,4 @@ El notebook original se conserva localmente y se excluye de publicación automá
 - [Evidencias y pruebas](docs/EVIDENCIAS.md)
 - [Material para el cuestionario y video](docs/SUSTENTACION.md)
 
-Pendientes: sesión/conexión GitHub y Render, clave Gemini y validación real de API, comprobación HTTPS desde otro equipo, cuestionario correcto A1–K3, integrantes y video. No hay URLs públicas inventadas ni declaraciones académicas marcadas como cumplidas sin evidencia.
+Pendientes: generación real exitosa de Gemini (proveedor indisponible en la última prueba), comprobación HTTPS desde otro equipo, cuestionario correcto A1–K3, integrantes y video. No hay URLs públicas inventadas ni declaraciones académicas marcadas como cumplidas sin evidencia.

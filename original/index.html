@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurnTrackAI | Predicción de Churn B2B</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#e4e7ec;--primary:#4f46e5;--danger:#dc2626;--warn:#d97706;--ok:#15803d}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.container{max-width:1200px;margin:auto;padding:28px}
+.hero{background:linear-gradient(135deg,#312e81,#4f46e5);color:white;border-radius:22px;padding:30px;margin-bottom:20px;box-shadow:0 12px 30px #0001}
+.hero h1{margin:0 0 8px;font-size:34px}.hero p{margin:0;opacity:.9}
+.tabs{display:flex;gap:10px;margin-bottom:18px}.tab{border:0;background:white;padding:12px 18px;border-radius:12px;cursor:pointer;font-weight:700;color:var(--muted)}.tab.active{background:var(--primary);color:white}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}@media(max-width:800px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}input[type=number],input[type=file]{width:100%;padding:11px;border:1px solid #d0d5dd;border-radius:10px;background:white}
+button.primary{margin-top:18px;border:0;background:var(--primary);color:white;padding:13px 20px;border-radius:11px;font-weight:800;cursor:pointer}
+.result{margin-top:18px;border:1px solid var(--line);border-radius:16px;padding:20px;background:#fafafa}
+.prob{font-size:42px;font-weight:900}.risk{font-size:24px;font-weight:900}.high{color:var(--danger)}.medium{color:var(--warn)}.low{color:var(--ok)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}@media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.metric{background:white;border:1px solid var(--line);border-radius:14px;padding:16px}.metric b{display:block;font-size:25px;margin-top:4px}
+.table-wrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;background:white}th,td{padding:10px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;white-space:nowrap}th{position:sticky;top:0;background:#f8fafc}
+.small{font-size:13px;color:var(--muted)}.download{display:none;margin-top:14px;text-decoration:none;background:#111827;color:white;padding:11px 15px;border-radius:10px;font-weight:700}
+.badge{padding:5px 8px;border-radius:999px;font-weight:800;font-size:12px}.badge.high{background:#fee2e2}.badge.medium{background:#fef3c7}.badge.low{background:#dcfce7}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="hero">
+    <h1>📊 ChurnTrackAI</h1>
+    <p>Sistema de Analítica Predictiva para la Predicción de Churn en Empresas B2B mediante Redes Neuronales</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('individual',this)">👤 Predicción individual</button>
+    <button class="tab" onclick="showTab('masivo',this)">📁 Análisis masivo CSV</button>
+  </div>
+
+  <section id="individual" class="panel active">
+    <div class="card">
+      <h2>Analizar un cliente</h2>
+      <p class="small">La inferencia se ejecuta directamente en el navegador usando los pesos del modelo neuronal entrenado.</p>
+      <div class="grid">
+        <div><label>Antigüedad (meses)</label><input id="antiguedad" type="number" value="24" min="0"></div>
+        <div><label>Compras mensuales</label><input id="compras" type="number" value="5" min="0"></div>
+        <div><label>Monto promedio (S/)</label><input id="monto" type="number" value="800" min="0"></div>
+        <div><label>Número de reclamos</label><input id="reclamos" type="number" value="2" min="0"></div>
+        <div><label>Días desde última compra</label><input id="dias" type="number" value="30" min="0"></div>
+        <div><label>Pagos atrasados</label><input id="atrasos" type="number" value="1" min="0"></div>
+      </div>
+      <button class="primary" onclick="analizarIndividual()">🔍 ANALIZAR CHURN</button>
+      <div id="individualResult" class="result" style="display:none"></div>
+    </div>
+  </section>
+
+  <section id="masivo" class="panel">
+    <div class="card">
+      <h2>Analizar clientes mediante CSV</h2>
+      <p class="small">Columnas obligatorias: cliente_id, antiguedad, compras_mensuales, monto_promedio, reclamos, dias_ultima_compra, pagos_atrasados.</p>
+      <input id="csvFile" type="file" accept=".csv">
+      <button class="primary" onclick="analizarCSV()">📊 ANALIZAR CLIENTES</button>
+      <div id="summary"></div>
+      <div id="tableWrap" class="table-wrap" style="display:none;margin-top:18px"></div>
+      <a id="download" class="download">⬇️ Descargar resultados para Excel</a>
+    </div>
+  </section>
+
+  <div class="card small">
+    <b>Proyecto académico:</b> los datos simulados se utilizan para demostrar el funcionamiento del PMV. Para una implementación empresarial se requiere entrenamiento con datos históricos reales y etiquetados.
+  </div>
+</div>
+
+<script src="modelo.js"></script>
+<script>
+function showTab(id,btn){
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); btn.classList.add('active');
+}
+function num(id){return Number(document.getElementById(id).value||0)}
+function risk(p){
+  if(p>=70) return {name:"ALTO", cls:"high", icon:"🔴"};
+  if(p>=40) return {name:"MEDIO", cls:"medium", icon:"🟡"};
+  return {name:"BAJO", cls:"low", icon:"🟢"};
+}
+function recommendation(row,p){
+  if(p>=70){
+    if(row.dias_ultima_compra>=60) return "Priorizar contacto de reactivación: revisar necesidades y aplicar una acción de recuperación.";
+    if(row.reclamos>=3) return "Priorizar atención de reclamos y seguimiento comercial para recuperar la relación.";
+    if(row.pagos_atrasados>=2) return "Revisar situación de pagos y ofrecer alternativas para facilitar la continuidad.";
+    return "Realizar contacto preventivo de retención y conocer las causas del posible abandono.";
+  }
+  if(p>=40) return "Realizar seguimiento periódico y revisar señales de insatisfacción.";
+  return "Mantener seguimiento comercial normal y fortalecer la relación con el cliente.";
+}
+function predict(row){
+  const x = [
+    row.antiguedad,row.compras_mensuales,row.monto_promedio,
+    row.reclamos,row.dias_ultima_compra,row.pagos_atrasados
+  ];
+  return predictChurn(x)*100;
+}
+function analizarIndividual(){
+  const row={
+    antiguedad:num('antiguedad'), compras_mensuales:num('compras'),
+    monto_promedio:num('monto'), reclamos:num('reclamos'),
+    dias_ultima_compra:num('dias'), pagos_atrasados:num('atrasos')
+  };
+  const p=predict(row), r=risk(p);
+  document.getElementById('individualResult').style.display='block';
+  document.getElementById('individualResult').innerHTML=
+    `<div class="small">Probabilidad estimada de Churn</div>
+     <div class="prob ${r.cls}">${p.toFixed(2)}%</div>
+     <div class="risk ${r.cls}">${r.icon} Riesgo ${r.name}</div>
+     <hr><b>Recomendación de retención</b><p>${recommendation(row,p)}</p>`;
+}
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  if(!lines.length) return [];
+  const split=s=>s.split(';').map(x=>x.trim().replace(/^"|"$/g,''));
+  let headers=split(lines[0]);
+  if(headers.length===1) headers=lines[0].split(',').map(x=>x.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).filter(Boolean).map(line=>{
+    const vals=(lines[0].includes(';')?split(line):line.split(',').map(x=>x.trim().replace(/^"|"$/g,' ')));
+    const o={}; headers.forEach((h,i)=>o[h]=vals[i]??''); return o;
+  });
+}
+function escapeHTML(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+async function analizarCSV(){
+  const file=document.getElementById('csvFile').files[0];
+  if(!file){alert("Selecciona un archivo CSV.");return;}
+  const rows=parseCSV(await file.text());
+  const required=["cliente_id","antiguedad","compras_mensuales","monto_promedio","reclamos","dias_ultima_compra","pagos_atrasados"];
+  const missing=required.filter(c=>!Object.prototype.hasOwnProperty.call(rows[0]||{},c));
+  if(missing.length){alert("Faltan columnas: "+missing.join(", "));return;}
+  const results=rows.map(row=>{
+    required.slice(1).forEach(c=>row[c]=Number(String(row[c]).replace(',','.')));
+    const p=predict(row), r=risk(p);
+    return {...row,probabilidad_churn:Number(p.toFixed(2)),nivel_riesgo:r.name,prioridad:p>=70?"URGENTE":p>=40?"ATENCIÓN":"NORMAL",recomendacion:recommendation(row,p)};
+  }).sort((a,b)=>b.probabilidad_churn-a.probabilidad_churn);
+  const high=results.filter(x=>x.nivel_riesgo==="ALTO").length;
+  const med=results.filter(x=>x.nivel_riesgo==="MEDIO").length;
+  const low=results.length-high-med;
+  document.getElementById('summary').innerHTML=
+    `<div class="metrics">
+      <div class="metric">Clientes analizados<b>${results.length}</b></div>
+      <div class="metric">🔴 Riesgo alto<b>${high}</b></div>
+      <div class="metric">🟡 Riesgo medio<b>${med}</b></div>
+      <div class="metric">🟢 Riesgo bajo<b>${low}</b></div>
+    </div>`;
+  const cols=["cliente_id","probabilidad_churn","nivel_riesgo","prioridad","recomendacion"];
+  let html="<table><thead><tr>"+cols.map(c=>`<th>${escapeHTML(c)}</th>`).join("")+"</tr></thead><tbody>";
+  results.forEach(r=>{
+    const cls=r.nivel_riesgo==="ALTO"?"high":r.nivel_riesgo==="MEDIO"?"medium":"low";
+    html+="<tr>"+cols.map(c=>c==="nivel_riesgo"?`<td><span class="badge ${cls}">${escapeHTML(r[c])}</span></td>`:`<td>${escapeHTML(r[c])}</td>`).join("")+"</tr>";
+  });
+  html+="</tbody></table>";
+  const wrap=document.getElementById('tableWrap'); wrap.style.display='block'; wrap.innerHTML=html;
+  const outCols=Object.keys(results[0]||{});
+  const csv=[outCols.join(";")].concat(results.map(r=>outCols.map(c=>`"${String(r[c]??"").replace(/"/g,'""')}"`).join(";"))).join("\n");
+  const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.getElementById('download'); a.href=url; a.download="resultados_churn.csv"; a.style.display="inline-block";
+}
+</script>
+</body>
+</html>

@@ -19,7 +19,7 @@ from .agents import SupervisorAgent, ACTIONS
 from .model import NeuralModel, ROOT
 from .schemas import AnalysisRequest, Customer, Decision, FEATURES
 from .storage import Store
-from .llm import GeminiProvider, ProviderError, explain_error
+from .llm import configured_provider, ProviderError, explain_error
 
 load_dotenv(ROOT / '.env')
 MAX_BODY = 256_000
@@ -54,7 +54,7 @@ def create_app(db_url=None):
     Path(ROOT / 'runtime').mkdir(exist_ok=True)
     store = Store(db_url or os.getenv('DATABASE_URL',f'sqlite:///{ROOT / "runtime/churn.db"}'))
     model = NeuralModel()
-    supervisor = SupervisorAgent(model,GeminiProvider(),store)
+    supervisor = SupervisorAgent(model,configured_provider(),store)
     app = FastAPI(title='ChurnTrackAI',version='1.0.0',docs_url=None,redoc_url=None,openapi_url=None)
     app.add_middleware(BodyLimit)
     app.state.store, app.state.supervisor = store, supervisor
@@ -97,7 +97,7 @@ def create_app(db_url=None):
 
     @app.get('/api/config')
     def config():
-        return {'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':20,'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
+        return {'llm_provider':getattr(supervisor.retention.provider,'name','unknown'),'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':20,'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
 
     @app.get('/api/metrics')
     def metrics():
@@ -119,7 +119,7 @@ def create_app(db_url=None):
             response, usage = await provider.choose([{'index':0,'probability':0.1,'risk':'BAJO','observed':{'dias_ultima_compra':5},'allowed_actions':['monitor']}])
             if len(response.choices)!=1 or response.choices[0].action!='monitor' or response.choices[0].index!=0 or response.choices[0].evidence!=['probability']:
                 raise ProviderError('UNSUPPORTED_RECOMMENDATION')
-            return {'available':True,'message':'Gemini respondió y su salida fue validada.','model':provider.model,'usage':usage}
+            return {'available':True,'message':'El LLM respondió y su salida fue validada.','model':provider.model,'usage':usage}
         except ProviderError as exc:
             return {'available':False,'message':explain_error(str(exc)),'code':str(exc),'model':provider.model}
 
@@ -140,6 +140,7 @@ def create_app(db_url=None):
             customers = json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
         return await execute(AnalysisRequest(customers=customers),persist=False,demo=True)
 
+    @app.post('/api/demo/llm')
     @app.post('/api/demo/gemini')
     async def professor_demo(request:Request):
         # Public access is restricted to a server-owned synthetic fixture.
@@ -165,16 +166,21 @@ def create_app(db_url=None):
             result = await execute(AnalysisRequest(customers=chosen,use_llm=permitted,consent_external_processing=permitted),persist=False,demo=True)
             result['public_demo'] = {'kind':'professor','cached':False,'cache_seconds':600,'daily_limit':5,'data':'fixed_synthetic','llm_permitted':permitted}
             if not permitted:
-                result['warnings'].append('La prueba pública de Gemini no está disponible: falta configuración o se alcanzó el límite de cinco demostraciones nuevas por día. Puedes recorrer los agentes con reglas.')
+                result['warnings'].append('La prueba pública del LLM no está disponible: falta configuración o se alcanzó el límite de cinco demostraciones nuevas por día. Puedes recorrer los agentes con reglas.')
             app.state.professor_cache = (time.monotonic(),copy.deepcopy(result))
             return result
+
+    @app.post('/api/public/analyze')
+    async def public_analyze(payload:AnalysisRequest):
+        if payload.use_llm or payload.consent_external_processing:
+            raise HTTPException(422,'El análisis público de datos propios utiliza red neuronal y reglas. La prueba LLM usa ejemplos fijos.')
+        return await execute(payload,persist=False)
 
     @app.post('/api/analyze',dependencies=[Depends(authorized)])
     async def analyze(payload:AnalysisRequest):
         return await execute(payload)
 
-    @app.post('/api/analyze-csv',dependencies=[Depends(authorized)])
-    async def analyze_csv(request:Request,use_llm:bool=False,consent:bool=False):
+    async def parse_csv(request:Request,use_llm:bool=False,consent:bool=False):
         try:
             body = (await request.body()).decode('utf-8-sig')
             delimiter = ';' if ';' in body.splitlines()[0] else ','
@@ -196,7 +202,17 @@ def create_app(db_url=None):
             else:
                 detail = str(exc)
             raise HTTPException(422,detail) from None
-        return await execute(payload)
+        return payload
+
+    @app.post('/api/analyze-csv',dependencies=[Depends(authorized)])
+    async def analyze_csv(request:Request,use_llm:bool=False,consent:bool=False):
+        return await execute(await parse_csv(request,use_llm,consent))
+
+    @app.post('/api/public/analyze-csv')
+    async def public_csv(request:Request):
+        if request.query_params:
+            raise HTTPException(422,'El CSV público se procesa sin LLM ni almacenamiento.')
+        return await execute(await parse_csv(request),persist=False)
 
     @app.get('/api/runs',dependencies=[Depends(authorized)])
     def runs():
@@ -222,6 +238,14 @@ def create_app(db_url=None):
         except IntegrityError:
             raise HTTPException(409,'La decisión ya fue registrada') from None
         return {'decision':payload.decision,'external_action_executed':False}
+
+    @app.post('/api/runs/{id}/approve-pending',dependencies=[Depends(authorized)])
+    def approve_pending(id:str):
+        run = find(id)
+        if run['status'] != 'completed':
+            raise HTTPException(409,'El informe no está validado.')
+        count = store.approve_pending(id,[r['cliente_id'] for r in run['recommendations'] if r['decision']=='pending'])
+        return {'approved_count':count,'external_action_executed':False}
 
     @app.get('/api/template.csv')
     def template():

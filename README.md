@@ -18,17 +18,23 @@ python -m venv .venv
 Abrir [la aplicación local](http://127.0.0.1:8000). `scripts/start.ps1` también inicia el servidor. En este entorno ya se creó `.venv`; si `ensurepip` no está disponible, un Python con pip puede instalar dentro de ella con `python -m pip --python .venv\Scripts\python.exe install -r requirements.txt`.
 
 1. Pulsar **Iniciar demostración sin clave**: los tres agentes procesan 12 clientes sintéticos con red neuronal y reglas, sin depender de un proveedor externo. **Probar Gemini (opcional)** usa tres ejemplos fijos y muestra el resultado real de la API. También hay demostración de 300 clientes.
-2. Para cargar datos y guardar resultados, abrir `.env` localmente, copiar el valor de `APP_API_KEY` y ponerlo en Configuración → Validar acceso y continuar. Esta clave es distinta de GEMINI_API_KEY; la interfaz rechaza una clave incorrecta antes de continuar. No publicar ese archivo ni mostrarlo en el video.
+2. Para analizar datos propios, usar Nuevo análisis: no requiere clave y los resultados son temporales. Solo para guardar en historial privado o usar LLM con datos propios, abrir `.env` localmente, copiar el valor de `APP_API_KEY` y ponerlo en Configuración → Validar acceso y continuar. Esta clave es distinta de GEMINI_API_KEY; la interfaz rechaza una clave incorrecta antes de continuar. No publicar ese archivo ni mostrarlo en el video.
 3. En Análisis predictivo introducir un cliente o subir `data/template.csv`.
 4. Revisar Clientes y segmentos, Inteligencia multiagente y Recomendaciones.
-5. Aprobar o rechazar una recomendación. Se registra la decisión; no se envía correo ni se modifica un CRM.
-6. En Decisiones, preparar documentos de seguimiento TXT o descargar el plan CSV con responsables propuestos, plazos y criterios de éxito. Son plantillas basadas en acciones verificadas, no mensajes enviados ni texto atribuido al LLM. El historial y los datos propios requieren la clave del espacio de trabajo.
+5. Aceptar o rechazar una recomendación, o usar **Aceptar todas las pendientes**. En modo público las decisiones quedan en esta pestaña y se pueden exportar; con historial privado se registran en el servidor. No se envían correos ni se modifica un CRM.
+6. En Decisiones, preparar documentos de seguimiento TXT o descargar el plan CSV con responsables propuestos, plazos y criterios de éxito. Son plantillas basadas en acciones verificadas, no mensajes enviados ni texto atribuido al LLM. Solo el historial privado requiere la clave del espacio de trabajo.
 
 ## Activar el LLM real
 
 Obtener una clave en [Google AI Studio](https://aistudio.google.com/api-keys) e introducirla **solo** en `.env` o en las variables seguras de Render como `GEMINI_API_KEY`. Mantener `GEMINI_MODEL=gemini-3.1-flash-lite`, sujeto a disponibilidad de la cuenta. Reiniciar el servicio después de configurar. No se solicitan secretos por chat.
 
 Marcar **Solicitar selección de acciones al LLM** y el consentimiento para procesar indicadores sin identificadores. La traza debe mostrar `structured_selection_request`, `validated_json`, `mode=llm` (o `mixed` en lotes mayores de 20) y metadatos de consumo de Gemini. Si no hay clave, cuota o respuesta válida, el informe avisa y marca `mode=rules`. El LLM elige acciones permitidas y evidencia; el texto explicativo se construye con los datos verificados.
+
+### Alternativa Groq
+
+Configurar `LLM_PROVIDER=groq` y `GROQ_API_KEY` exclusivamente en Render o `.env`; opcional `GROQ_MODEL=openai/gpt-oss-20b`. El adaptador usa JSON Schema estricto, valida la respuesta y conserva los controles semánticos del supervisor. Hace como máximo dos intentos, sujetos al presupuesto. Las pruebas con dobles no acreditan disponibilidad real: usar **Probar LLM con ejemplos, sin clave** para verificarla. La configuración por defecto continúa siendo Gemini hasta que el administrador elija Groq.
+
+Documentación: [salidas estructuradas Groq](https://console.groq.com/docs/structured-outputs). No publicar claves en el repositorio ni introducirlas en el frontend.
 
 ## Datos y API
 
@@ -47,6 +53,10 @@ DEMO-001,24,5,800,2,30,1
 | `GET /api/config` | Configuración no sensible | Público |
 | `GET /api/metrics` | Diagnóstico medido del artefacto | Público |
 | `POST /api/demo` | Datos sintéticos fijos, sin persistencia | Público |
+| `POST /api/public/analyze` | JSON: hasta 300 clientes, reglas, sin guardar ni enviar a LLM | Público |
+| `POST /api/public/analyze-csv` | CSV validado, sin guardar ni enviar a LLM | Público |
+| `POST /api/demo/llm` | Prueba LLM con ejemplos fijos y presupuesto limitado | Público |
+| `POST /api/runs/{id}/approve-pending` | Acepta pendientes sin sobrescribir rechazos; no ejecuta acciones | Bearer |
 | `POST /api/analyze` | JSON con `customers`, `use_llm`, `consent_external_processing` | Bearer |
 | `POST /api/analyze-csv` | Cuerpo `text/csv`; opciones `use_llm` y `consent` | Bearer |
 | `GET /api/runs` | Últimas 100 ejecuciones | Bearer |
@@ -62,6 +72,7 @@ DEMO-001,24,5,800,2,30,1
 .\.venv\Scripts\python -m pytest -q --junitxml=evidence/tests.xml
 node --check frontend/app.js
 node tests/actions.cjs
+node tests/clarity.cjs
 # Con servidor local encendido:
 .\.venv\Scripts\python scripts/collect_evidence.py
 ```

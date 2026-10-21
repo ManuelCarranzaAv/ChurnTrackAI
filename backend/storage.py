@@ -43,6 +43,16 @@ class Store:
         with self.engine.begin() as db:
             db.execute(text('INSERT INTO decisions VALUES (:r,:c,:d,:t)'), {'r':run_id,'c':customer_id,'d':decision,'t':datetime.now(timezone.utc).isoformat()})
 
+    def approve_pending(self, run_id, customer_ids):
+        # One transaction; existing approvals/rejections are never overwritten.
+        count = 0
+        with self.engine.begin() as db:
+            for cid in customer_ids:
+                result = db.execute(text('INSERT INTO decisions VALUES (:r,:c,:d,:t) ON CONFLICT(run_id,customer_id) DO NOTHING'),
+                    {'r':run_id,'c':cid,'d':'approved','t':datetime.now(timezone.utc).isoformat()})
+                count += result.rowcount
+        return count
+
     def reserve_call(self, limit):
         day = datetime.now(timezone.utc).date().isoformat()
         with self.engine.begin() as db:

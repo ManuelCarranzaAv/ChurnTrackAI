@@ -97,7 +97,7 @@ class RetentionAgent:
             candidates = sorted(range(len(state.predictions)), key=lambda i: -state.predictions[i].probability)[:20]
             payload = [{'index':i,'probability':p.probability,'risk':p.risk,'observed':p.observed,'allowed_actions':allowed(p)} for i in candidates for p in [state.predictions[i]]]
             if len(state.predictions) > 20:
-                state.warnings.append('Gemini se solicita para los 20 clientes de mayor probabilidad; los restantes utilizan reglas explícitas.')
+                state.warnings.append('El LLM se solicita para los 20 clientes de mayor probabilidad; los restantes utilizan reglas explícitas.')
             state.send('retencion','llm','structured_selection_request', {'input':payload, 'identifiers_removed':True})
             for attempt in range(2):
                 if not self.provider.key:
@@ -192,12 +192,12 @@ class SupervisorAgent:
         errors = [a['code'] for a in state.llm_attempts if a.get('code')]
         run['llm_report'] = {
             'requested':request.use_llm,
-            'provider':'Gemini',
+            'provider':getattr(self.retention.provider,'name','test-provider'),
             'model':getattr(self.retention.provider,'model','test-provider'),
-            'api':'generateContent',
+            'api':getattr(self.retention.provider,'api','test-api'),
             'status':'validated' if successful else 'failed' if state.llm_attempts else 'not_called',
             'attempts':state.llm_attempts,
-            'message':'Gemini respondió y su selección pasó los controles.' if successful else explain_error(errors[-1]) if errors else 'No se realizó una llamada a Gemini. Revisa las advertencias si fue solicitado.',
+            'message':'El LLM respondió y su selección pasó los controles.' if successful else explain_error(errors[-1]) if errors else 'No se realizó una llamada al LLM. Revisa las advertencias si fue solicitado.',
             'usage':state.usage,
             'identifiers_sent':False,
             'selected_customers':sum(r.source=='llm' for r in state.recommendations),
@@ -208,7 +208,7 @@ class SupervisorAgent:
             'retention': {'llm_count':sum(r.source=='llm' for r in state.recommendations),'rules_count':sum(r.source=='rules' for r in state.recommendations),'actions':{action:sum(r.action==action for r in state.recommendations) for action in ACTIONS}},
             'supervisor': {'validated':state.status=='completed','checks':['Correspondencia de clientes','Acciones compatibles con indicadores','Evidencia verificable','Plan de seguimiento y revisión humana'],'corrections':sum(m.tool=='request_correction' for m in state.trace)},
         }
-        run.update({'elapsed_ms':round((time.perf_counter()-start)*1000,2),'model_sha256':self.model.digest,'demo':demo,'summary':{'customers':len(state.predictions),'high':sum(p.risk=='ALTO' for p in state.predictions),'medium':sum(p.risk=='MEDIO' for p in state.predictions),'low':sum(p.risk=='BAJO' for p in state.predictions)}})
+        run.update({'elapsed_ms':round((time.perf_counter()-start)*1000,2),'model_sha256':self.model.digest,'demo':demo,'ephemeral':not persist,'summary':{'customers':len(state.predictions),'high':sum(p.risk=='ALTO' for p in state.predictions),'medium':sum(p.risk=='MEDIO' for p in state.predictions),'low':sum(p.risk=='BAJO' for p in state.predictions)}})
         if persist:
             self.store.save(run)
         return run

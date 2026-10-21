@@ -3,3 +3,5 @@
 
 
 #action-artifact pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.7 'Segoe UI',Arial,sans-serif;margin:16px 0;}
+
+.explanation-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}.explanation-cards section{padding:18px;background:#f3f8f6;border:1px solid #dae7df;border-radius:9px}.explanation-cards h3{font-size:16px}.explanation-cards p{font-size:12px;color:#496158}.explanation-cards b{font-size:12px}.analysis-explained label{display:block;margin-top:18px;max-width:520px}.analysis-explained select{width:100%;padding:10px;margin-top:6px}.analysis-explained>p,#bulk-review p{font-size:12px;color:#496158}#bulk-review button{margin:14px 0}.analysis-explained .rec-actions{margin-top:18px}@media(max-width:1000px){.explanation-cards{grid-template-columns:1fr}}

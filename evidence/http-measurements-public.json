@@ -1,0 +1,31 @@
+{
+  "created": "2026-10-21T16:15:50.492091+00:00",
+  "base_url": "https://churntrackai.onrender.com",
+  "scope": "PUBLIC HTTPS from development computer",
+  "measurements": {
+    "/health": {
+      "samples": 5,
+      "median_ms": 210.31719999996312,
+      "max_ms": 486.7822999999589,
+      "status": 200
+    },
+    "/": {
+      "samples": 5,
+      "median_ms": 195.73629999990771,
+      "max_ms": 221.9356999999036,
+      "status": 200
+    },
+    "/api/demo": {
+      "samples": 5,
+      "median_ms": 193.61239999989266,
+      "max_ms": 287.60540000007495,
+      "status": 200
+    }
+  },
+  "health": {
+    "status": "ok",
+    "model": "loaded",
+    "database": "ok",
+    "version": "1.0.0"
+  }
+}

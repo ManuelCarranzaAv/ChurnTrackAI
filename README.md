@@ -28,7 +28,7 @@ Abrir [la aplicación local](http://127.0.0.1:8000). `scripts/start.ps1` tambié
 
 Obtener una clave en [Google AI Studio](https://aistudio.google.com/api-keys) e introducirla **solo** en `.env` o en las variables seguras de Render como `GEMINI_API_KEY`. Mantener `GEMINI_MODEL=gemini-3.1-flash-lite`, sujeto a disponibilidad de la cuenta. Reiniciar el servicio después de configurar. No se solicitan secretos por chat.
 
-Marcar **Solicitar selección de acciones al LLM** y el consentimiento para procesar indicadores sin identificadores. La traza debe mostrar `structured_selection_request`, `validated_json`, `mode=llm` y metadatos de consumo de Gemini. Si no hay clave, cuota o respuesta válida, el informe avisa y marca `mode=rules`. El LLM elige acciones permitidas y evidencia; el texto explicativo se construye con los datos verificados.
+Marcar **Solicitar selección de acciones al LLM** y el consentimiento para procesar indicadores sin identificadores. La traza debe mostrar `structured_selection_request`, `validated_json`, `mode=llm` (o `mixed` en lotes mayores de 20) y metadatos de consumo de Gemini. Si no hay clave, cuota o respuesta válida, el informe avisa y marca `mode=rules`. El LLM elige acciones permitidas y evidencia; el texto explicativo se construye con los datos verificados.
 
 ## Datos y API
 
@@ -77,7 +77,7 @@ Render es la opción principal. `Dockerfile` sirve frontend y backend en un solo
 docker compose up --build
 ```
 
-Docker no está instalado en el entorno de trabajo actual; el contenedor está preparado pero su construcción no se ha comprobado aquí. Compose persiste SQLite en un volumen. Render Free no ofrece disco persistente: configurar PostgreSQL externo con `DATABASE_URL` si las trazas deben sobrevivir reinicios. PostgreSQL está soportado por código pero su conexión no se ha probado con una instancia real.
+Docker no está instalado localmente; Render construyó el contenedor y confirmó el servicio live. Compose persiste SQLite en un volumen. Render Free no ofrece disco persistente: configurar PostgreSQL externo con `DATABASE_URL` si las trazas deben sobrevivir reinicios. PostgreSQL está soportado por código pero su conexión no se ha probado con una instancia real.
 
 ## Estructura
 

@@ -4,7 +4,7 @@
 
 ## A Datos del equipo
 
-Proyecto: Sistema de Analítica Predictiva para la Predicción de Churn en Empresas B2B mediante Redes Neuronales. Producto: ChurnTrackAI. Integrante, código académico, equipo, roles y fecha de entrega: pendientes del equipo. URL pública, GitHub y video: pendientes; no reutilizar las URLs de Aurum. La identidad configurada en Git no acredita autoría ni composición del equipo.
+Proyecto: Sistema de Analítica Predictiva para la Predicción de Churn en Empresas B2B mediante Redes Neuronales. Producto: ChurnTrackAI. Integrante, código académico, equipo, roles y fecha de entrega: pendientes del equipo. Aplicación: https://churntrackai.onrender.com . Código: https://github.com/ManuelCarranzaAv/ChurnTrackAI . Video pendiente. La identidad configurada en Git no acredita autoría ni composición del equipo.
 
 ## B Problema, usuario e innovación
 
@@ -30,11 +30,11 @@ Predictivo valida e infiere; retención selecciona acciones y evidencia; supervi
 
 Red 6–32–16–8–1, ReLU y sigmoide, pesos exportados desde trabajo previo. No hay un artefacto Keras original entregado; sí pesos suficientes para inferencia. El escalador exportado y el notebook difieren: explicado en `AUDITORIA.md`.
 
-El proveedor integrado es Gemini 2.5 Flash-Lite mediante API REST; clave `GEMINI_API_KEY`. Hasta 2.048 tokens de salida y 50 intentos diarios por defecto; el proveedor puede imponer cuotas menores. Estimación ilustrativa de 100 consultas individuales: USD 0,022 en plan estándar pagado bajo el supuesto de 1.000 tokens de entrada y 300 de salida por consulta, sin reintentos; no es gasto medido. Ver fuentes y cálculo en `DESPLIEGUE.md`. Prueba real y consumo efectivo pendientes de clave. Sin clave se identifica expresamente la recomendación por reglas.
+El proveedor integrado es Gemini 2.5 Flash-Lite mediante API REST; clave `GEMINI_API_KEY`. Hasta 2.048 tokens de salida y 50 intentos diarios por defecto; el proveedor puede imponer cuotas menores. Estimación ilustrativa de 100 consultas individuales: USD 0,022 en plan estándar pagado bajo el supuesto de 1.000 tokens de entrada y 300 de salida por consulta, sin reintentos; no es gasto medido. Ver fuentes y cálculo en `DESPLIEGUE.md`. La clave está configurada. Las pruebas reales devolvieron indisponibilidad del proveedor (503); no hay generación exitosa acreditada. Sin clave se identifica expresamente la recomendación por reglas.
 
 ## G Despliegue en línea
 
-Preparados Dockerfile, compose, Blueprint, variables y `/health`. Runtime local comprobado. Publicación HTTPS y repositorio remoto pendientes de un canal de acceso operativo. Docker y PostgreSQL no están validados con infraestructura real. El plan gratuito Render tiene suspensión y almacenamiento efímero; no garantiza persistencia de SQLite.
+Preparados Dockerfile, compose, Blueprint, variables y `/health`. Runtime local comprobado. Publicación HTTPS y repositorio remoto verificados. Docker se construyó en Render; PostgreSQL no está validado con una instancia real. El plan gratuito Render tiene suspensión y almacenamiento efímero; no garantiza persistencia de SQLite.
 
 ## H Seguridad y ética
 
@@ -42,7 +42,7 @@ Acceso con clave, IDs anónimos, ausencia de prompts libres, consentimiento LLM,
 
 ## I Pruebas y evidencias
 
-Resultados reales en `evidence/tests.xml`, matriz `docs/EVIDENCIAS.md`, comparación del modelo en `models/evaluation.json`, medidas HTTP y capturas locales. Los tests de respuestas del proveedor usan dobles identificados y no cuentan como evidencia LLM real. Capturas públicas, logs de producción y prueba desde otro equipo: pendientes.
+Resultados reales en `evidence/tests.xml`, matriz `docs/EVIDENCIAS.md`, comparación del modelo en `models/evaluation.json`, medidas HTTP y capturas locales. Los tests de respuestas del proveedor usan dobles identificados y no cuentan como evidencia LLM real. Medidas HTTP públicas: evidence/http-measurements-public.json. Prueba desde otro dispositivo físico pendiente.
 
 ## J Gestión del proyecto
 

@@ -1,0 +1,8 @@
+.git
+.env
+.venv
+runtime
+original
+evidence
+node_modules
+__pycache__

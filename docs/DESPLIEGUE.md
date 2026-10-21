@@ -12,7 +12,7 @@ Condiciones consultadas el 20 de octubre de 2026; revisar de nuevo al contratar.
 |---|---|---|
 | Render Free | 512 MB, 0,1 CPU. Suspensión tras 15 min sin tráfico; reactivación cercana a un minuto. Disco efímero. 750 horas gratuitas por workspace/mes | Principal; un contenedor FastAPI para todo |
 | Koyeb Free | 512 MB, 0,1 vCPU, 2 GB SSD; una instancia por organización, sin volumen; escala a cero tras 1 h | Alternativa Docker si está disponible para la cuenta |
-| Vercel más backend | Requiere conservar un backend y almacenamiento externos para esta arquitectura; añade configuración entre servicios | Innecesario para este MVP |
+| Vercel con funciones Python | Admite FastAPI; esta aplicación requiere adaptar la persistencia y los límites al entorno de funciones | Se conserva el despliegue funcional en Render |
 
 Fuentes: [planes Render](https://render.com/docs/compute-plans), [servicios gratuitos Render](https://render.com/docs/free), [instancias Koyeb](https://www.koyeb.com/docs/reference/instances), [límites de funciones Vercel](https://vercel.com/docs/functions/limitations).
 
@@ -35,7 +35,7 @@ git remote add origin <URL_REAL_DEL_REPOSITORIO>
 git push -u origin HEAD
 ```
 
-No ejecutar marcadores `<...>` literalmente. Si ya hay un remoto, comprobarlo y actualizarlo sin sobrescribir repositorios ajenos. No se requieren GitHub Actions: el autodespliegue de Render basta para el MVP.
+No ejecutar marcadores `<...>` literalmente. Si ya hay un remoto, comprobarlo y actualizarlo sin sobrescribir repositorios ajenos. No se requieren GitHub Actions. Este servicio se vinculó mediante URL pública de GitHub: se dispara manualmente cada despliegue y se verifica el commit publicado.
 
 ## Crear el servicio
 
@@ -43,7 +43,7 @@ No ejecutar marcadores `<...>` literalmente. Si ya hay un remoto, comprobarlo y 
 2. Elegir **New → Blueprint** y conectar el repositorio con `render.yaml`. Alternativa: **New → Web Service**, repositorio, runtime Docker, plan Free y health check `/health`.
 3. Comprobar el plan gratuito antes de confirmar. No añadir un disco ni un plan pagado sin decidir su costo.
 4. `APP_API_KEY` se genera por Blueprint; para configuración manual generar una clave larga aleatoria y guardarla en Environment. Compartirla con el docente por un canal privado, no en README ni en video.
-5. Configurar `GEMINI_API_KEY` en Environment para demostrar el LLM. `GEMINI_MODEL=gemini-2.5-flash-lite`; `LLM_DAILY_LIMIT=50`. La clave se introduce en el panel seguro.
+5. Configurar `GEMINI_API_KEY` en Environment para demostrar el LLM. `GEMINI_MODEL=gemini-3.1-flash-lite`; `LLM_DAILY_LIMIT=50`. La clave se introduce en el panel seguro.
 6. Por defecto, `DATABASE_URL=sqlite:////app/runtime/churn.db`. Solo sirve para una demo descartable. Para conservar historial, reemplazar por la conexión segura PostgreSQL de una base externa. Se aceptan prefijos `postgres://`, `postgresql://` y `postgresql+psycopg://`. Usar TLS según las instrucciones del proveedor.
 7. Desplegar. El contenedor usa el `PORT` de Render, escucha `0.0.0.0` y ejecuta un solo worker.
 8. Revisar logs de build y servidor. El runtime no requiere descargar o entrenar modelos al arrancar.
@@ -63,7 +63,7 @@ Guardar la URL literal que entregue Render. En una ventana independiente comprob
 - Exportar informe y CSV. Abrir el reporte de métricas y los factores.
 - Repetir desde otro equipo o red; capturar pantallas de la URL pública y medir latencia online, incluida primera carga después de suspensión.
 
-`scripts/collect_evidence.py` recopila medidas HTTP y traza sintética. Antes de usarlo en producción adaptar el campo `scope` y los nombres de salida para distinguir evidencia pública de local; las verificaciones humanas de LLM, aprobación y otro dispositivo no quedan cubiertas por ese script.
+`scripts/collect_evidence.py` recopila medidas HTTP y traza sintética. El script distingue la URL pública de localhost y separa los archivos de evidencia; las verificaciones humanas de LLM, aprobación y otro dispositivo no quedan cubiertas por ese script.
 
 ## Actualizaciones
 
@@ -71,11 +71,9 @@ Cambiar código, ejecutar pytest y equivalencia del modelo si se tocaron sus art
 
 ## LLM y presupuesto
 
-Gemini 2.5 Flash-Lite ofrece entrada y salida sin cargo dentro del nivel gratuito elegible. Las cuotas dependen de la cuenta y pueden cambiar. En el nivel pagado estándar, la referencia consultada es USD 0,10 por millón de tokens de entrada y USD 0,40 de salida. Google indica que el contenido del nivel gratuito puede utilizarse para mejorar sus productos: la demo debe usar datos sintéticos. Fuente: [precios oficiales Gemini](https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-lite).
+El modelo configurado es `gemini-3.1-flash-lite`. Las cuotas y tarifas dependen del proyecto de Google y del modelo; consultar [precios oficiales Gemini](https://ai.google.dev/gemini-api/docs/pricing). No se ha acreditado un costo real por consulta. El límite local es de 50 intentos diarios, se priorizan hasta 20 clientes por lote y la demo pública no invoca el proveedor.
 
-Estimación ilustrativa para 100 consultas de un cliente: con 1.000 tokens de entrada y 300 de salida por consulta, costo pagado = 100 × (1000×0,10 + 300×0,40) / 1.000.000 = **USD 0,022**, sin reintentos. Con dos intentos en todas, USD 0,044. Esto es un escenario de presupuesto, no consumo medido. Los lotes grandes consumen más. En cuota gratuita elegible el cargo de tokens puede ser USD 0, pero 100 consultas quizá deban distribuirse en varios días por los límites. El límite local de 50 intentos diarios también aplica.
-
-Los tokens reales se registran desde `usageMetadata`; las llamadas fallidas pueden consumir cuota sin informar tokens. No hay aún evidencia de una llamada real en este entorno. Ningún costo de hosting, facturación o disponibilidad se considera garantizado.
+La clave permitió consultar el catálogo de modelos, pero las pruebas de generación del 21/10/2026 devolvieron HTTP 503. No existe evidencia de una generación exitosa. La aplicación informa el fallo y continúa con la red neuronal y reglas explícitas. Los tokens reales se registran desde `usageMetadata` cuando está disponible; una llamada fallida puede consumir cuota sin informar tokens. Usar datos sintéticos en la demostración y revisar las condiciones del nivel contratado. No se garantiza disponibilidad continua ni un costo determinado.
 
 ## ZIP y alternativas
 

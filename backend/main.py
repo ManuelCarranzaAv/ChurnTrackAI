@@ -4,6 +4,7 @@ import io
 import json
 import os
 import secrets
+import copy
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -59,6 +60,8 @@ def create_app(db_url=None):
     app.state.store, app.state.supervisor = store, supervisor
     app.state.calls = []
     app.state.slots = asyncio.Semaphore(2)
+    app.state.professor_lock = asyncio.Lock()
+    app.state.professor_cache = None
 
     async def authorized(request:Request):
         expected = os.getenv('APP_API_KEY','')
@@ -137,6 +140,35 @@ def create_app(db_url=None):
             customers = json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
         return await execute(AnalysisRequest(customers=customers),persist=False,demo=True)
 
+    @app.post('/api/demo/gemini')
+    async def professor_demo(request:Request):
+        # Public access is restricted to a server-owned synthetic fixture.
+        # No uploaded body, identifiers, prompts or private run IDs are accepted.
+        if await request.body() or request.query_params:
+            raise HTTPException(422,'Este recorrido utiliza únicamente los ejemplos sintéticos del servidor.')
+        if app.state.professor_lock.locked():
+            raise HTTPException(429,'Hay una demostración en curso. Espera unos segundos y vuelve a intentarlo.')
+        async with app.state.professor_lock:
+            cached = app.state.professor_cache
+            if cached and time.monotonic()-cached[0] < 600:
+                result = copy.deepcopy(cached[1])
+                result['public_demo']['cached'] = True
+                return result
+            customers = json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
+            chosen = []
+            for risk in ('ALTO','MEDIO','BAJO'):
+                row = next((row for row in customers if model.predict(Customer.model_validate(row)).risk==risk),None)
+                if row: chosen.append(row)
+            if app.state.slots.locked():
+                raise HTTPException(429,'El sistema está ocupado. Intenta nuevamente en unos segundos.')
+            permitted = bool(supervisor.retention.provider.key) and store.reserve_public_demo(5)
+            result = await execute(AnalysisRequest(customers=chosen,use_llm=permitted,consent_external_processing=permitted),persist=False,demo=True)
+            result['public_demo'] = {'kind':'professor','cached':False,'cache_seconds':600,'daily_limit':5,'data':'fixed_synthetic','llm_permitted':permitted}
+            if not permitted:
+                result['warnings'].append('La prueba pública de Gemini no está disponible: falta configuración o se alcanzó el límite de cinco demostraciones nuevas por día. Puedes recorrer los agentes con reglas.')
+            app.state.professor_cache = (time.monotonic(),copy.deepcopy(result))
+            return result
+
     @app.post('/api/analyze',dependencies=[Depends(authorized)])
     async def analyze(payload:AnalysisRequest):
         return await execute(payload)
@@ -206,3 +238,4 @@ def create_app(db_url=None):
     return app
 
 app = create_app()
+

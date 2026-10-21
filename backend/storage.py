@@ -13,6 +13,7 @@ class Store:
             db.execute(text('CREATE TABLE IF NOT EXISTS runs (id VARCHAR(36) PRIMARY KEY, created VARCHAR(40) NOT NULL, body TEXT NOT NULL)'))
             db.execute(text('CREATE TABLE IF NOT EXISTS decisions (run_id VARCHAR(36), customer_id VARCHAR(48), decision VARCHAR(16), created VARCHAR(40), PRIMARY KEY(run_id, customer_id))'))
             db.execute(text('CREATE TABLE IF NOT EXISTS usage (day VARCHAR(10) PRIMARY KEY, calls INTEGER NOT NULL)'))
+            db.execute(text('CREATE TABLE IF NOT EXISTS public_demo_usage (day VARCHAR(10) PRIMARY KEY, calls INTEGER NOT NULL)'))
 
     def save(self, run):
         with self.engine.begin() as db:
@@ -48,3 +49,11 @@ class Store:
             db.execute(text('INSERT INTO usage(day,calls) VALUES (:day,0) ON CONFLICT(day) DO NOTHING'), {'day':day})
             result = db.execute(text('UPDATE usage SET calls=calls+1 WHERE day=:day AND calls < :lim'), {'day':day,'lim':limit})
             return result.rowcount == 1
+
+    def reserve_public_demo(self, limit=5):
+        day = datetime.now(timezone.utc).date().isoformat()
+        with self.engine.begin() as db:
+            db.execute(text('INSERT INTO public_demo_usage(day,calls) VALUES (:day,0) ON CONFLICT(day) DO NOTHING'), {'day':day})
+            result = db.execute(text('UPDATE public_demo_usage SET calls=calls+1 WHERE day=:day AND calls < :lim'), {'day':day,'lim':limit})
+            return result.rowcount == 1
+

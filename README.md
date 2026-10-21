@@ -106,3 +106,11 @@ El notebook original se conserva localmente y se excluye de publicación automá
 - [Material para el cuestionario y video](docs/SUSTENTACION.md)
 
 Pendientes: generación real exitosa de Gemini (proveedor indisponible en la última prueba), comprobación HTTPS desde otro equipo, cuestionario correcto A1–K3, integrantes y video. No hay URLs públicas inventadas ni declaraciones académicas marcadas como cumplidas sin evidencia.
+
+
+## Recorrido para el profesor
+
+En Inicio, **Iniciar recorrido con Gemini** ejecuta tres casos ficticios sin clave de acceso. Muestra la llamada real, estado, intentos, duración, uso informado y respuesta validada; los fallos se distinguen de la generación exitosa. Se puede recorrer cada agente y simular una decisión solo en la pestaña. La demo de 300 sigue disponible sin proveedor. Detalles y límites en [RECORRIDO_PROFESOR.md](docs/RECORRIDO_PROFESOR.md).
+
+`POST /api/demo/gemini` solo admite fixtures internos: sin cuerpo ni parámetros, caché explícito de diez minutos, una ejecución concurrente y hasta cinco nuevas demostraciones diarias con LLM (máximo dos intentos cada una), sujeto además al presupuesto global y a la persistencia del almacenamiento. Datos propios e historiales siguen requiriendo autorización. 37 pruebas pasan; las pruebas reales recientes de Google siguen sin acreditar una generación exitosa.
+

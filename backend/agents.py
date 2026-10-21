@@ -61,6 +61,7 @@ class SharedState(BaseModel):
     trace: list[Message] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     usage: list[dict] = Field(default_factory=list)
+    llm_attempts: list[dict] = Field(default_factory=list)
     mode: str = 'rules'
 
     def send(self, sender, recipient, tool, payload, status='ok'):
@@ -108,6 +109,7 @@ class RetentionAgent:
                     state.send('retencion','supervisor','daily_budget', {'limit_reached':True},'error')
                     break
                 try:
+                    attempt_start = time.perf_counter()
                     response, usage = await self.provider.choose(payload)
                     response = LLMResponse.model_validate(response.model_dump())
                     state.usage.append(usage)
@@ -120,10 +122,12 @@ class RetentionAgent:
                         if choice.action not in allowed(p) or not set(choice.evidence).issubset({*p.observed,'probability'}) or not set(ACTIONS[choice.action][1]).issubset(choice.evidence):
                             raise ProviderError('UNSUPPORTED_RECOMMENDATION')
                     state.send('llm','retencion','validated_json',response.model_dump())
+                    state.llm_attempts.append({'attempt':attempt+1,'status':'validated','elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
                     state.mode = 'mixed' if len(state.predictions) > 20 else 'llm'
                     break
                 except ProviderError as exc:
                     selections = None
+                    state.llm_attempts.append({'attempt':attempt+1,'status':'failed','code':str(exc),'elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
                     state.send('llm','retencion','provider_call', {'attempt':attempt+1,'error':str(exc)},'retry' if attempt == 0 else 'error')
                     if attempt == 1 or any(x in str(exc) for x in ('HTTP_400','HTTP_401','HTTP_403','HTTP_404','HTTP_429')):
                         state.warnings.append(explain_error(str(exc)))
@@ -184,6 +188,20 @@ class SupervisorAgent:
             if len(state.trace) < 18:
                 state.send('supervisor','usuario','execution_failed', {'error':type(exc).__name__},'error')
         run = state.model_dump()
+        successful = any(a['status']=='validated' for a in state.llm_attempts)
+        errors = [a['code'] for a in state.llm_attempts if a.get('code')]
+        run['llm_report'] = {
+            'requested':request.use_llm,
+            'provider':'Gemini',
+            'model':getattr(self.retention.provider,'model','test-provider'),
+            'api':'generateContent',
+            'status':'validated' if successful else 'failed' if state.llm_attempts else 'not_called',
+            'attempts':state.llm_attempts,
+            'message':'Gemini respondió y su selección pasó los controles.' if successful else explain_error(errors[-1]) if errors else 'No se realizó una llamada a Gemini. Revisa las advertencias si fue solicitado.',
+            'usage':state.usage,
+            'identifiers_sent':False,
+            'selected_customers':sum(r.source=='llm' for r in state.recommendations),
+        }
         run['analytics'] = portfolio(state.predictions)
         run['agent_report'] = {
             'predictive': {'count':len(state.predictions),'out_of_domain':sum(bool(p.warnings) for p in state.predictions)},
@@ -194,3 +212,4 @@ class SupervisorAgent:
         if persist:
             self.store.save(run)
         return run
+

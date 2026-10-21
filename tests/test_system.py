@@ -240,3 +240,52 @@ def test_invalid_provider_credentials_not_retried(client):
     run=analyze(client,use_llm=True,consent_external_processing=True).json()
     assert provider.calls==1 and run['status']=='completed'
     assert any('permisos' in w for w in run['warnings'])
+
+def test_public_gemini_fixed_inputs_cache_and_private_isolation(client):
+    class Stub:
+        key='test-double'
+        model='test-model'
+        calls=0
+        async def choose(self,payload):
+            self.calls+=1
+            assert len(payload)==3 and 'cliente_id' not in json.dumps(payload)
+            assert {p['risk'] for p in payload}=={'ALTO','MEDIO','BAJO'}
+            return LLMResponse(choices=[{'index':p['index'],'action':p['allowed_actions'][0],'evidence':['probability']} for p in payload]),{'provider':'TEST_DOUBLE','total_tokens':123}
+    provider=Stub();client.app.state.supervisor.retention.provider=provider
+    run=client.post('/api/demo/gemini').json()
+    assert run['llm_report']['status']=='validated' and run['llm_report']['selected_customers']==3
+    assert run['llm_report']['attempts'][0]['elapsed_ms']>=0
+    assert run['public_demo']['cached'] is False
+    repeat=client.post('/api/demo/gemini').json()
+    assert repeat['id']==run['id'] and repeat['public_demo']['cached'] is True and provider.calls==1
+    assert client.get('/api/runs/'+run['id'],headers=AUTH).status_code==404
+    assert client.get('/api/runs').status_code==401
+    assert client.post('/api/demo/gemini',json={'customers':[ROW]}).status_code==422
+    assert client.post('/api/demo/gemini?prompt=custom').status_code==422
+
+def test_public_gemini_limit_falls_back_without_provider_call(client,monkeypatch):
+    provider=client.app.state.supervisor.retention.provider;provider.key='test-double'
+    async def unexpected(payload):
+        raise AssertionError('No provider call after public budget exhausted')
+    monkeypatch.setattr(provider,'choose',unexpected)
+    for _ in range(5): assert client.app.state.store.reserve_public_demo(5)
+    run=client.post('/api/demo/gemini').json()
+    assert run['status']=='completed' and run['mode']=='rules'
+    assert run['public_demo']['llm_permitted'] is False
+    assert run['llm_report']['attempts']==[]
+
+def test_public_gemini_failure_reports_attempts_not_generation(client,monkeypatch):
+    provider=client.app.state.supervisor.retention.provider;provider.key='test-double'
+    async def fail(payload): raise ProviderError('HTTP_503_PROVIDER_REJECTED')
+    monkeypatch.setattr(provider,'choose',fail)
+    run=client.post('/api/demo/gemini').json()
+    assert run['status']=='completed' and run['mode']=='rules'
+    assert run['llm_report']['status']=='failed' and len(run['llm_report']['attempts'])==2
+    assert run['llm_report']['selected_customers']==0 and run['usage']==[]
+    assert not any(m['tool']=='validated_json' for m in run['trace'])
+
+def test_public_gemini_single_flight(client):
+    client.portal.call(client.app.state.professor_lock.acquire)
+    try: assert client.post('/api/demo/gemini').status_code==429
+    finally: client.portal.call(client.app.state.professor_lock.release)
+

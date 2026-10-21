@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');
+const {actionPackage,planCsv}=require('../frontend/actions.js');
+const run={demo:true,predictions:[{cliente_id:'A',risk:'ALTO'},{cliente_id:'B',risk:'BAJO'}],recommendations:[{cliente_id:'A',action:'contact',owner:'=HYPERLINK("x")',steps:['Verificar; "dato"'],decision:'pending',source:'rules'},{cliente_id:'B',action:'monitor',steps:[],decision:'approved',source:'rules'}]};
+const contact=actionPackage(run,'A',{contact:['Contacto preventivo']});
+assert.equal(contact.execution,'Propuesta; no ejecutada');
+assert.match(contact.draft,/No se ha enviado/);
+assert.equal(contact.synthetic,true);
+assert.equal(actionPackage(run,'B').internal,true);
+assert.match(actionPackage(run,'B').draft,/NOTA INTERNA/);
+assert.match(planCsv(run),/"'=HYPERLINK/);
+assert.match(planCsv(run),/Verificar; ""dato""/);
+assert.throws(()=>actionPackage(run,'missing'));
+console.log('8 comprobaciones de documentos y CSV correctas');

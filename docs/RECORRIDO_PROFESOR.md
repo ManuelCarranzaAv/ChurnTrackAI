@@ -1,11 +1,11 @@
 # Recorrido de evaluación sin claves
 
-1. Abrir https://churntrackai.onrender.com/ y pulsar **Iniciar recorrido con Gemini**.
-2. Esperar el resultado. El servidor analiza tres ejemplos ficticios de riesgo alto, medio y bajo y solicita una selección estructurada de acciones a Gemini si hay configuración y cuota.
-3. Leer **Evidencia del uso del LLM**: modelo, intentos, duración, tokens informados y número de clientes con selección validada. Expandir solicitud/respuesta para inspeccionar los datos. Un error no es una generación exitosa.
-4. Usar los botones de la guía para ir a Predictivo, Retención y Supervisor. Cambiar el cliente en la mesa de agentes.
-5. Desde Supervisor, pulsar **Revisar esta acción** y **Simular aprobación** o **Simular rechazo**. La práctica solo modifica la pestaña actual; no almacena decisiones ni contacta clientes.
-6. Para revisar escala, volver a Inicio y usar la demostración de 300 clientes con reglas. Para datos propios se requiere acceso privado.
+1. Abrir https://churntrackai.onrender.com/ y pulsar **Iniciar demostración sin clave**. Los tres agentes procesan doce ejemplos sintéticos con la red neuronal y reglas; no requiere cuenta ni proveedor externo.
+2. Seguir la guía para explorar Predictivo, Retención y Supervisor. Cambiar de cliente y observar entradas, decisiones y validaciones reales del informe.
+3. Desde Supervisor, pulsar **Revisar esta acción**. En Decisiones se puede simular aprobación/rechazo; solo modifica la pestaña actual.
+4. Pulsar **Preparar documento de seguimiento** para obtener un borrador o nota interna TXT. **Descargar plan de seguimiento CSV** exporta responsables propuestos, plazos y criterios de éxito. Son herramientas reales de exportación basadas en plantillas; no envían correos ni crean tareas en un CRM.
+5. Opcionalmente, usar **Probar Gemini (opcional)** o el botón de Configuración **Probar Gemini sin clave de ChurnTrackAI**. Analiza tres ejemplos fijos sin acceso privado. Revisar intentos, duración, resultado y tokens cuando el proveedor los informe. Un fallo se muestra explícitamente y los agentes continúan con reglas.
+6. Para revisar escala, volver a Inicio y usar la demostración de 300 clientes. Para datos propios e historial, desplegar **Administración y datos propios · acceso privado** en Configuración y validar APP_API_KEY. No usar ahí una clave de Gemini.
 
 ## Límites y evidencia
 
@@ -19,5 +19,5 @@
 
 ## Verificación
 
-37 pruebas automatizadas cubren el sistema, incluyendo entrada fija, aislamiento privado, reutilización, presupuesto público, exclusión concurrente, respuesta LLM válida con doble y errores reales representados sin generación ficticia. Se prueba además el recorrido en navegador sin autenticación.
+37 pruebas automatizadas cubren el sistema, incluyendo entrada fija, aislamiento privado, reutilización, presupuesto público, exclusión concurrente, respuesta LLM válida con doble y errores reales representados sin generación ficticia. Se prueba además el recorrido en navegador sin autenticación. `node tests/actions.cjs` verifica la preparación de documentos, las etiquetas de ejecución, el escape CSV y la protección contra fórmulas.
 

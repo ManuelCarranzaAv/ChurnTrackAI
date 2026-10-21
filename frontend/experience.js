@@ -19,7 +19,7 @@ $('access-form').onsubmit=e=>{e.preventDefault();work(async()=>{
  });};
 const originalLogout=$('logout').onclick;$('logout').onclick=()=>{originalLogout();$('access-status').textContent='Modo visitante · acceso cerrado.';$('analysis-access-note').textContent='Valida el acceso para cargar tus propios datos.';};
 $('demo-300').onclick=()=>work(async()=>{tablePage=0;recPage=0;current=await api('/api/demo?size=300',{method:'POST'});render();show('segments');notice('300 clientes sintéticos analizados. Demostración pública sin contraseña, sin guardar datos y sin consumir Gemini.');});
-$('check-llm').onclick=()=>work(async()=>{if(!apiKey)throw Error('Valida primero el acceso de ChurnTrackAI para probar Gemini.');const result=await api('/api/llm/check',{method:'POST'});$('llm-status').textContent=result.message+(result.model?' Modelo: '+result.model:'');notice(result.message,!result.available);});
+$('check-llm').onclick=()=>startProfessor(true);
 $('prev-customers').onclick=()=>{tablePage--;renderTable();};$('next-customers').onclick=()=>{tablePage++;renderTable();};
 $('prev-recs').onclick=()=>{recPage--;renderRecommendations();};$('next-recs').onclick=()=>{recPage++;renderRecommendations();};
 renderExperience();

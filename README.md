@@ -17,12 +17,12 @@ python -m venv .venv
 
 Abrir [la aplicación local](http://127.0.0.1:8000). `scripts/start.ps1` también inicia el servidor. En este entorno ya se creó `.venv`; si `ensurepip` no está disponible, un Python con pip puede instalar dentro de ella con `python -m pip --python .venv\Scripts\python.exe install -r requirements.txt`.
 
-1. Seleccionar **Analizar 300 clientes de ejemplo** o **Explorar con datos de ejemplo** para ejecutar una inferencia real sobre datos ficticios sin contraseña.
+1. Pulsar **Iniciar demostración sin clave**: los tres agentes procesan 12 clientes sintéticos con red neuronal y reglas, sin depender de un proveedor externo. **Probar Gemini (opcional)** usa tres ejemplos fijos y muestra el resultado real de la API. También hay demostración de 300 clientes.
 2. Para cargar datos y guardar resultados, abrir `.env` localmente, copiar el valor de `APP_API_KEY` y ponerlo en Configuración → Validar acceso y continuar. Esta clave es distinta de GEMINI_API_KEY; la interfaz rechaza una clave incorrecta antes de continuar. No publicar ese archivo ni mostrarlo en el video.
 3. En Análisis predictivo introducir un cliente o subir `data/template.csv`.
 4. Revisar Clientes y segmentos, Inteligencia multiagente y Recomendaciones.
 5. Aprobar o rechazar una recomendación. Se registra la decisión; no se envía correo ni se modifica un CRM.
-6. Exportar JSON del informe o CSV de resultados. El historial requiere la clave del espacio de trabajo.
+6. En Decisiones, preparar documentos de seguimiento TXT o descargar el plan CSV con responsables propuestos, plazos y criterios de éxito. Son plantillas basadas en acciones verificadas, no mensajes enviados ni texto atribuido al LLM. El historial y los datos propios requieren la clave del espacio de trabajo.
 
 ## Activar el LLM real
 
@@ -61,6 +61,7 @@ DEMO-001,24,5,800,2,30,1
 .\.venv\Scripts\python scripts/evaluate.py
 .\.venv\Scripts\python -m pytest -q --junitxml=evidence/tests.xml
 node --check frontend/app.js
+node tests/actions.cjs
 # Con servidor local encendido:
 .\.venv\Scripts\python scripts/collect_evidence.py
 ```

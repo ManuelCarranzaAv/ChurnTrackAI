@@ -1,0 +1,164 @@
+import asyncio
+import os
+import time
+import uuid
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+from .schemas import AnalysisRequest, Message, Prediction, Recommendation, LLMResponse
+from .llm import ProviderError
+from .analytics import portfolio
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+ACTIONS = {
+    'contact': ('Programar contacto preventivo', ['probability']),
+    'monitor': ('Mantener seguimiento comercial', ['probability']),
+    'reactivate': ('Consultar necesidades y proponer reactivación', ['dias_ultima_compra']),
+    'claims': ('Revisar los reclamos registrados con el ejecutivo', ['reclamos']),
+    'payments': ('Revisar pagos atrasados y evaluar alternativas', ['pagos_atrasados']),
+    'review_data': ('Validar datos fuera del dominio antes de actuar', ['probability']),
+}
+
+def allowed(p):
+    if p.warnings:
+        return ['review_data']
+    choices = ['monitor'] if p.risk == 'BAJO' else ['contact']
+    if p.observed['dias_ultima_compra'] >= 60:
+        choices.append('reactivate')
+    if p.observed['reclamos'] >= 3:
+        choices.append('claims')
+    if p.observed['pagos_atrasados'] >= 2:
+        choices.append('payments')
+    return choices
+
+class SharedState(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    created: str = Field(default_factory=now)
+    status: str = 'running'
+    predictions: list[Prediction] = Field(default_factory=list)
+    recommendations: list[Recommendation] = Field(default_factory=list)
+    trace: list[Message] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    usage: list[dict] = Field(default_factory=list)
+    mode: str = 'rules'
+
+    def send(self, sender, recipient, tool, payload, status='ok'):
+        if len(self.trace) >= 18:
+            raise RuntimeError('MAX_STEPS')
+        self.trace.append(Message(sequence=len(self.trace)+1, timestamp=now(), sender=sender, recipient=recipient, tool=tool, status=status, payload=payload))
+
+class PredictiveAgent:
+    def __init__(self, model):
+        self.model = model
+
+    def execute(self, request, state):
+        # Validation is repeated at the agent boundary, not delegated to the UI.
+        request = AnalysisRequest.model_validate(request.model_dump())
+        state.predictions = [self.model.predict(c) for c in request.customers]
+        state.send('predictivo','supervisor','neural_inference_and_mean_ablation', {'model_sha256':self.model.digest,'outputs':[{'index':i,'probability':p.probability,'risk':p.risk,'factors':[f.model_dump() for f in p.factors[:3]],'out_of_domain':bool(p.warnings)} for i,p in enumerate(state.predictions)]})
+
+class RetentionAgent:
+    def __init__(self, provider, store):
+        self.provider, self.store = provider, store
+
+    def materialize(self, p, action, source, evidence=None):
+        evidence = evidence or ACTIONS[action][1]
+        facts = {**p.observed, 'probability':round(p.probability,6)}
+        reason = '; '.join(f'{key} = {facts[key]}' for key in evidence)
+        return Recommendation(cliente_id=p.cliente_id, action=action, evidence=evidence, rationale=f'{ACTIONS[action][0]}. Evidencia: {reason}. Validar el contexto con una persona.', priority={'ALTO':'URGENTE','MEDIO':'ATENCION','BAJO':'NORMAL'}[p.risk], source=source)
+
+    async def execute(self, request, state, correction=False):
+        selections = None
+        if request.use_llm and not correction:
+            candidates = sorted(range(len(state.predictions)), key=lambda i: -state.predictions[i].probability)[:20]
+            payload = [{'index':i,'probability':p.probability,'risk':p.risk,'observed':p.observed,'allowed_actions':allowed(p)} for i in candidates for p in [state.predictions[i]]]
+            if len(state.predictions) > 20:
+                state.warnings.append('Gemini se solicita para los 20 clientes de mayor probabilidad; los restantes utilizan reglas explícitas.')
+            state.send('retencion','llm','structured_selection_request', {'input':payload, 'identifiers_removed':True})
+            for attempt in range(2):
+                if not self.provider.key:
+                    state.warnings.append('LLM no configurado. Se aplicaron reglas explícitas, sin generación LLM.')
+                    state.send('retencion','supervisor','llm_unavailable', {'reason':'LLM_NOT_CONFIGURED'},'error')
+                    break
+                if not self.store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50'))):
+                    state.warnings.append('Límite diario LLM alcanzado; se aplicaron reglas.')
+                    state.send('retencion','supervisor','daily_budget', {'limit_reached':True},'error')
+                    break
+                try:
+                    response, usage = await self.provider.choose(payload)
+                    response = LLMResponse.model_validate(response.model_dump())
+                    state.usage.append(usage)
+                    ids = [c.index for c in response.choices]
+                    if sorted(ids) != sorted(candidates):
+                        raise ProviderError('INCOMPLETE_CHOICES')
+                    selections = {c.index:c for c in response.choices}
+                    for i, choice in selections.items():
+                        p = state.predictions[i]
+                        if choice.action not in allowed(p) or not set(choice.evidence).issubset({*p.observed,'probability'}) or not set(ACTIONS[choice.action][1]).issubset(choice.evidence):
+                            raise ProviderError('UNSUPPORTED_RECOMMENDATION')
+                    state.send('llm','retencion','validated_json',response.model_dump())
+                    state.mode = 'mixed' if len(state.predictions) > 20 else 'llm'
+                    break
+                except ProviderError as exc:
+                    selections = None
+                    state.send('llm','retencion','provider_call', {'attempt':attempt+1,'error':str(exc)},'retry' if attempt == 0 else 'error')
+            if selections is None:
+                state.warnings.append('Proveedor LLM falló o devolvió evidencia inválida; se aplicaron reglas.')
+        recs = []
+        for i, p in enumerate(state.predictions):
+            if selections and i in selections:
+                choice = selections[i]
+                recs.append(self.materialize(p,choice.action,'llm',choice.evidence))
+            else:
+                options = allowed(p)
+                recs.append(self.materialize(p, options[-1] if p.risk != 'BAJO' else options[0], 'rules'))
+        state.recommendations = recs
+        state.send('retencion','supervisor','recommendations', {'source':state.mode,'outputs':[{'index':i,'action':r.action,'evidence':r.evidence,'priority':r.priority} for i,r in enumerate(recs)], 'correction':correction})
+
+class SupervisorAgent:
+    def __init__(self, model, provider, store):
+        self.predictive = PredictiveAgent(model)
+        self.retention = RetentionAgent(provider,store)
+        self.model, self.store = model, store
+
+    def validate(self, state):
+        if len(state.predictions) != len(state.recommendations):
+            return False
+        for p,r in zip(state.predictions,state.recommendations):
+            if r.cliente_id != p.cliente_id or r.action not in allowed(p) or r.priority != {'ALTO':'URGENTE','MEDIO':'ATENCION','BAJO':'NORMAL'}[p.risk] or r.decision != 'pending':
+                return False
+            if not set(ACTIONS[r.action][1]).issubset(r.evidence) or not set(r.evidence).issubset({*p.observed,'probability'}):
+                return False
+        return True
+
+    async def run(self, request, persist=True, demo=False):
+        state = SharedState()
+        start = time.perf_counter()
+        async def workflow():
+            state.send('usuario','supervisor','analysis_request', {'customer_count':len(request.customers),'requested_llm':request.use_llm,'demo':demo})
+            state.send('supervisor','predictivo','delegate_prediction',{'task':'validate, infer, explain'},'delegated')
+            self.predictive.execute(request,state)
+            state.send('supervisor','retencion','delegate_retention',{'prediction_message':3,'task':'select grounded actions'},'delegated')
+            await self.retention.execute(request,state)
+            if not self.validate(state):
+                state.send('supervisor','retencion','request_correction',{'reason':'inconsistent_recommendations'},'retry')
+                state.mode = 'rules'
+                await self.retention.execute(request,state,correction=True)
+            if not self.validate(state):
+                raise RuntimeError('SUPERVISOR_REJECTED')
+            state.send('supervisor','usuario','validated_report',{'approved_for_human_review':True,'external_actions_executed':0})
+            state.status = 'completed'
+        try:
+            await asyncio.wait_for(workflow(), timeout=30)
+        except (TimeoutError, RuntimeError) as exc:
+            state.status = 'failed'
+            state.warnings.append('Ejecución interrumpida: '+type(exc).__name__)
+            if len(state.trace) < 18:
+                state.send('supervisor','usuario','execution_failed', {'error':type(exc).__name__},'error')
+        run = state.model_dump()
+        run['analytics'] = portfolio(state.predictions)
+        run.update({'elapsed_ms':round((time.perf_counter()-start)*1000,2),'model_sha256':self.model.digest,'demo':demo,'summary':{'customers':len(state.predictions),'high':sum(p.risk=='ALTO' for p in state.predictions),'medium':sum(p.risk=='MEDIO' for p in state.predictions),'low':sum(p.risk=='BAJO' for p in state.predictions)}})
+        if persist:
+            self.store.save(run)
+        return run

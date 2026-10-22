@@ -17,7 +17,7 @@ def test_public_custom_analysis_not_saved_or_sent(client):
 
 
 def test_public_boundary_and_private_isolation(client):
-    assert client.post('/api/public/analyze',json={'customers':[ROW],'use_llm':True,'consent_external_processing':True}).status_code==422
+    assert client.post('/api/public/analyze',json={'customers':[ROW],'use_llm':True}).status_code==422
     assert client.post('/api/public/analyze',json={'customers':[ROW]*301}).status_code==422
     assert client.post('/api/analyze',json={'customers':[ROW]}).status_code==401
     assert client.get('/api/runs').status_code==401

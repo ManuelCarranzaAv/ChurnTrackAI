@@ -172,9 +172,17 @@ def create_app(db_url=None):
 
     @app.post('/api/public/analyze')
     async def public_analyze(payload:AnalysisRequest):
-        if payload.use_llm or payload.consent_external_processing:
-            raise HTTPException(422,'El análisis público de datos propios utiliza red neuronal y reglas. La prueba LLM usa ejemplos fijos.')
-        return await execute(payload,persist=False)
+        return await execute_public(payload)
+
+    async def execute_public(payload):
+        # Only validated numeric indicators are accepted; never arbitrary prompts.
+        limited = payload.use_llm and not store.reserve_public_demo(int(os.getenv('PUBLIC_LLM_DAILY_LIMIT','10')))
+        if limited:
+            payload = payload.model_copy(update={'use_llm':False})
+        result = await execute(payload,persist=False)
+        if limited:
+            result['warnings'].append('Cuota pública LLM agotada. Cada cliente recibió análisis neuronal y recomendación por reglas.')
+        return result
 
     @app.post('/api/analyze',dependencies=[Depends(authorized)])
     async def analyze(payload:AnalysisRequest):
@@ -209,10 +217,10 @@ def create_app(db_url=None):
         return await execute(await parse_csv(request,use_llm,consent))
 
     @app.post('/api/public/analyze-csv')
-    async def public_csv(request:Request):
-        if request.query_params:
+    async def public_csv(request:Request,use_llm:bool=False,consent:bool=False):
+        if set(request.query_params)-{'use_llm','consent'}:
             raise HTTPException(422,'El CSV público se procesa sin LLM ni almacenamiento.')
-        return await execute(await parse_csv(request),persist=False)
+        return await execute_public(await parse_csv(request,use_llm,consent))
 
     @app.get('/api/runs',dependencies=[Depends(authorized)])
     def runs():
@@ -244,7 +252,7 @@ def create_app(db_url=None):
         run = find(id)
         if run['status'] != 'completed':
             raise HTTPException(409,'El informe no está validado.')
-        count = store.approve_pending(id,[r['cliente_id'] for r in run['recommendations'] if r['decision']=='pending'])
+        count = store.approve_pending(id,[r['cliente_id'] for r in run['recommendations'] if r['decision']=='pending' and r.get('supervisor_review',{}).get('action')!='request_review'])
         return {'approved_count':count,'external_action_executed':False}
 
     @app.get('/api/template.csv')

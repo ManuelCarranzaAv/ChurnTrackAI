@@ -5,3 +5,5 @@
 
 .has-analysis #view-dashboard>.business-route{display:none}
 
+
+.journey #view-dashboard>:not(#workspace-start):not(#home-analysis){display:none!important}.journey #home-analysis{display:block!important}.journey .demo-banner button,.journey .professor-launch{display:none!important}.journey #view-analysis{display:none!important}.journey #agent-outcomes,.journey .agent-cards{display:none!important}.journey #workspace-start .start-card{padding:22px;margin-bottom:20px}.journey #workspace-start h2{font-size:23px}.processing-note{padding:14px 18px;border-left:3px solid #4e8e79;background:#eef5f1;color:#3f6155;font-size:12px}.flow-next{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px;background:#e8f3ed;border-radius:9px;margin-bottom:20px}.flow-next p{margin:0;color:#345a4b}.storage-options{padding:16px;margin-bottom:20px}.agent-ai-result{padding:16px;background:#e9f4ee;border-radius:8px;margin-bottom:20px}.agent-ai-result p{margin:8px 0}.agent-ai-result small{display:block}body:not(.has-analysis) .flow-next{display:none}@media(max-width:760px){.flow-next{display:block}.flow-next button{margin-top:10px}}

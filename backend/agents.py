@@ -63,11 +63,55 @@ class SharedState(BaseModel):
     usage: list[dict] = Field(default_factory=list)
     llm_attempts: list[dict] = Field(default_factory=list)
     mode: str = 'rules'
+    agent_llm: dict = Field(default_factory=dict)
 
     def send(self, sender, recipient, tool, payload, status='ok'):
-        if len(self.trace) >= 18:
+        if len(self.trace) >= 32:
             raise RuntimeError('MAX_STEPS')
         self.trace.append(Message(sequence=len(self.trace)+1, timestamp=now(), sender=sender, recipient=recipient, tool=tool, status=status, payload=payload))
+
+async def review_stage(stage, request, state, provider, store):
+    report = {'status':'not_called','checked_indices':[],'choices':[]}
+    state.agent_llm[stage] = report
+    if not request.use_llm or not provider.key or not hasattr(provider,'review'):
+        report['reason'] = 'Sin solicitud, configuración o herramienta de revisión LLM.'
+        return
+    if not store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50'))):
+        report['reason'] = 'Presupuesto diario agotado.'
+        state.warnings.append(f'{stage}: sin cuota LLM; se conservan controles deterministas.')
+        return
+    indices = sorted(range(len(state.predictions)),key=lambda i:-state.predictions[i].probability)[:20]
+    payload = []
+    for i in indices:
+        p = state.predictions[i]
+        options = (['review_data'] if p.warnings else ['interpret_risk']) if stage=='predictivo' else ['approve_plan','request_review']
+        row = {'index':i,'probability':p.probability,'risk':p.risk,'observed':p.observed,'allowed_actions':options}
+        if stage=='supervisor':
+            rec = state.recommendations[i]
+            row['proposal'] = {'action':rec.action,'evidence':rec.evidence,'steps':rec.steps}
+        payload.append(row)
+    state.send(stage,'llm',stage+'_llm_request',{'input':payload,'identifiers_removed':True})
+    start = time.perf_counter()
+    try:
+        response, usage = await provider.review(payload,stage)
+        response = LLMResponse.model_validate(response.model_dump())
+        state.usage.append({**usage,'agent':stage})
+        if sorted(c.index for c in response.choices)!=sorted(indices):
+            raise ProviderError('INCOMPLETE_CHOICES')
+        by_index={r['index']:r for r in payload}
+        for c in response.choices:
+            if c.action not in by_index[c.index]['allowed_actions'] or not set(c.evidence).issubset({*state.predictions[c.index].observed,'probability'}):
+                raise ProviderError('UNSUPPORTED_RECOMMENDATION')
+        report.update(status='validated',checked_indices=indices,choices=[c.model_dump() for c in response.choices],usage=usage)
+        state.send('llm',stage,stage+'_llm_result',response.model_dump())
+        state.llm_attempts.append({'agent':stage,'attempt':1,'status':'validated','elapsed_ms':round((time.perf_counter()-start)*1000,2)})
+        if stage=='supervisor' and any(c.action=='request_review' for c in response.choices):
+            state.warnings.append('El supervisor LLM solicita revisión humana adicional para algunas propuestas; consulta sus observaciones antes de aceptar.')
+    except ProviderError as exc:
+        report.update(status='failed',reason=explain_error(str(exc)))
+        state.send('llm',stage,stage+'_llm_result',{'error':str(exc)},'error')
+        state.llm_attempts.append({'agent':stage,'attempt':1,'status':'failed','code':str(exc),'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
+        state.warnings.append(stage+': '+explain_error(str(exc)))
 
 class PredictiveAgent:
     def __init__(self, model):
@@ -98,6 +142,9 @@ class RetentionAgent:
             payload = [{'index':i,'probability':p.probability,'risk':p.risk,'observed':p.observed,'allowed_actions':allowed(p)} for i in candidates for p in [state.predictions[i]]]
             if len(state.predictions) > 20:
                 state.warnings.append('El LLM se solicita para los 20 clientes de mayor probabilidad; los restantes utilizan reglas explícitas.')
+            interpretation={c['index']:c for c in state.agent_llm.get('predictivo',{}).get('choices',[])}
+            for row in payload:
+                if row['index'] in interpretation: row['predictive_review']=interpretation[row['index']]
             state.send('retencion','llm','structured_selection_request', {'input':payload, 'identifiers_removed':True})
             for attempt in range(2):
                 if not self.provider.key:
@@ -112,7 +159,7 @@ class RetentionAgent:
                     attempt_start = time.perf_counter()
                     response, usage = await self.provider.choose(payload)
                     response = LLMResponse.model_validate(response.model_dump())
-                    state.usage.append(usage)
+                    state.usage.append({**usage,'agent':'retencion'})
                     ids = [c.index for c in response.choices]
                     if sorted(ids) != sorted(candidates):
                         raise ProviderError('INCOMPLETE_CHOICES')
@@ -122,12 +169,12 @@ class RetentionAgent:
                         if choice.action not in allowed(p) or not set(choice.evidence).issubset({*p.observed,'probability'}) or not set(ACTIONS[choice.action][1]).issubset(choice.evidence):
                             raise ProviderError('UNSUPPORTED_RECOMMENDATION')
                     state.send('llm','retencion','validated_json',response.model_dump())
-                    state.llm_attempts.append({'attempt':attempt+1,'status':'validated','elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
+                    state.llm_attempts.append({'agent':'retencion','attempt':attempt+1,'status':'validated','elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
                     state.mode = 'mixed' if len(state.predictions) > 20 else 'llm'
                     break
                 except ProviderError as exc:
                     selections = None
-                    state.llm_attempts.append({'attempt':attempt+1,'status':'failed','code':str(exc),'elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
+                    state.llm_attempts.append({'agent':'retencion','attempt':attempt+1,'status':'failed','code':str(exc),'elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
                     state.send('llm','retencion','provider_call', {'attempt':attempt+1,'error':str(exc)},'retry' if attempt == 0 else 'error')
                     if attempt == 1 or any(x in str(exc) for x in ('HTTP_400','HTTP_401','HTTP_403','HTTP_404','HTTP_429')):
                         state.warnings.append(explain_error(str(exc)))
@@ -170,6 +217,7 @@ class SupervisorAgent:
             state.send('usuario','supervisor','analysis_request', {'customer_count':len(request.customers),'requested_llm':request.use_llm,'demo':demo})
             state.send('supervisor','predictivo','delegate_prediction',{'task':'validate, infer, explain'},'delegated')
             self.predictive.execute(request,state)
+            await review_stage('predictivo',request,state,self.retention.provider,self.store)
             state.send('supervisor','retencion','delegate_retention',{'prediction_message':3,'task':'select grounded actions'},'delegated')
             await self.retention.execute(request,state)
             if not self.validate(state):
@@ -178,17 +226,19 @@ class SupervisorAgent:
                 await self.retention.execute(request,state,correction=True)
             if not self.validate(state):
                 raise RuntimeError('SUPERVISOR_REJECTED')
+            await review_stage('supervisor',request,state,self.retention.provider,self.store)
             state.send('supervisor','usuario','validated_report',{'approved_for_human_review':True,'external_actions_executed':0})
             state.status = 'completed'
         try:
-            await asyncio.wait_for(workflow(), timeout=30)
+            await asyncio.wait_for(workflow(), timeout=60)
         except (TimeoutError, RuntimeError) as exc:
             state.status = 'failed'
             state.warnings.append('Ejecución interrumpida: '+type(exc).__name__)
-            if len(state.trace) < 18:
+            if len(state.trace) < 32:
                 state.send('supervisor','usuario','execution_failed', {'error':type(exc).__name__},'error')
+        state.agent_llm['retencion'] = {'status':'validated' if any(r.source=='llm' for r in state.recommendations) else 'failed' if any(a.get('agent')=='retencion' for a in state.llm_attempts) else 'not_called','checked_indices':[i for i,r in enumerate(state.recommendations) if r.source=='llm']}
         run = state.model_dump()
-        successful = any(a['status']=='validated' for a in state.llm_attempts)
+        successful = any(r.source=='llm' for r in state.recommendations)
         errors = [a['code'] for a in state.llm_attempts if a.get('code')]
         run['llm_report'] = {
             'requested':request.use_llm,
@@ -202,6 +252,10 @@ class SupervisorAgent:
             'identifiers_sent':False,
             'selected_customers':sum(r.source=='llm' for r in state.recommendations),
         }
+        for choice in state.agent_llm.get('supervisor',{}).get('choices',[]):
+            run['recommendations'][choice['index']]['supervisor_review']=choice
+        for choice in state.agent_llm.get('predictivo',{}).get('choices',[]):
+            run['predictions'][choice['index']]['llm_interpretation']=choice
         run['analytics'] = portfolio(state.predictions)
         run['agent_report'] = {
             'predictive': {'count':len(state.predictions),'out_of_domain':sum(bool(p.warnings) for p in state.predictions)},

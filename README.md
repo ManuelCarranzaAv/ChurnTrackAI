@@ -2,7 +2,7 @@
 
 Plataforma académica de analítica predictiva B2B con red neuronal real y tres agentes coordinados: predictivo, retención y supervisor. Reutiliza los pesos de `modelo.js`, añade API Python, persistencia, dashboard y revisión humana.
 
-**Estado:** aplicación publicada en [https://churntrackai.onrender.com](https://churntrackai.onrender.com), código en [GitHub](https://github.com/ManuelCarranzaAv/ChurnTrackAI). Modelo académico sintético, no validado con empresas. La actualización incorpora acceso validado, demo pública de 300 clientes, planes de acción y resumen de agentes. Gemini está configurado en el servidor, pero la comprobación del 21/10/2026 devolvió HTTP 503; no se afirma generación exitosa.
+**Estado:** aplicación publicada en https://churntrackai.onrender.com/. Flujo Inicio → Diagnóstico → Recomendaciones → Aceptación. Análisis individual y CSV hasta 300 clientes; Groq configurado en servidor. Tres roles consultan al LLM para hasta 20 clientes priorizados. Modelo académico sintético, no validado con empresas. Guía del cuestionario: [SUSTENTACION.md](docs/SUSTENTACION.md).
 
 ## Inicio rápido
 
@@ -17,24 +17,20 @@ python -m venv .venv
 
 Abrir [la aplicación local](http://127.0.0.1:8000). `scripts/start.ps1` también inicia el servidor. En este entorno ya se creó `.venv`; si `ensurepip` no está disponible, un Python con pip puede instalar dentro de ella con `python -m pip --python .venv\Scripts\python.exe install -r requirements.txt`.
 
-1. Pulsar **Iniciar demostración sin clave**: los tres agentes procesan 12 clientes sintéticos con red neuronal y reglas, sin depender de un proveedor externo. **Probar Gemini (opcional)** usa tres ejemplos fijos y muestra el resultado real de la API. También hay demostración de 300 clientes.
-2. Para analizar datos propios, usar Nuevo análisis: no requiere clave y los resultados son temporales. Solo para guardar en historial privado o usar LLM con datos propios, abrir `.env` localmente, copiar el valor de `APP_API_KEY` y ponerlo en Configuración → Validar acceso y continuar. Esta clave es distinta de GEMINI_API_KEY; la interfaz rechaza una clave incorrecta antes de continuar. No publicar ese archivo ni mostrarlo en el video.
-3. En Análisis predictivo introducir un cliente o subir `data/template.csv`.
-4. Revisar Clientes y segmentos, Inteligencia multiagente y Recomendaciones.
-5. Aceptar o rechazar una recomendación, o usar **Aceptar todas las pendientes**. En modo público las decisiones quedan en esta pestaña y se pueden exportar; con historial privado se registran en el servidor. No se envían correos ni se modifica un CRM.
-6. En Decisiones, preparar documentos de seguimiento TXT o descargar el plan CSV con responsables propuestos, plazos y criterios de éxito. Son plantillas basadas en acciones verificadas, no mensajes enviados ni texto atribuido al LLM. Solo el historial privado requiere la clave del espacio de trabajo.
+1. En **Inicio**, elegir **Cliente individual** o **Cartera CSV**, ingresar indicadores y pulsar **Analizar churn**. No se solicita clave de acceso para este análisis temporal.
+2. Revisar resultados y factores en **Diagnóstico**.
+3. En **Recomendaciones**, seleccionar cliente y agente: Predictivo interpreta evidencia; Retención propone una acción; Supervisor revisa la propuesta. Cada etapa indica si realmente respondió el LLM o si se usaron reglas. Descargar informe y traza JSON.
+4. En **Aceptación**, aceptar/rechazar individualmente o aceptar pendientes elegibles. Las propuestas marcadas para revisión adicional quedan fuera de la aceptación masiva. No se envían correos ni se modifica CRM.
+5. Exportar resultados antes de cerrar. **Opciones de guardado** permite historial privado con APP_API_KEY; la consulta pública al LLM no requiere esa clave.
+6. **Evaluación e historial** conserva métricas y consulta privada.
 
-## Activar el LLM real
+## Proveedor LLM
 
-Obtener una clave en [Google AI Studio](https://aistudio.google.com/api-keys) e introducirla **solo** en `.env` o en las variables seguras de Render como `GEMINI_API_KEY`. Mantener `GEMINI_MODEL=gemini-3.1-flash-lite`, sujeto a disponibilidad de la cuenta. Reiniciar el servicio después de configurar. No se solicitan secretos por chat.
+Configurar exclusivamente en Render Environment o .env ignorado: `LLM_PROVIDER=groq`, `GROQ_API_KEY`, `GROQ_MODEL=openai/gpt-oss-20b`. Alternativamente `LLM_PROVIDER=gemini`, `GEMINI_API_KEY` y `GEMINI_MODEL`. Nunca introducir claves en la interfaz ni versionarlas.
 
-Marcar **Solicitar selección de acciones al LLM** y el consentimiento para procesar indicadores sin identificadores. La traza debe mostrar `structured_selection_request`, `validated_json`, `mode=llm` (o `mixed` en lotes mayores de 20) y metadatos de consumo de Gemini. Si no hay clave, cuota o respuesta válida, el informe avisa y marca `mode=rules`. El LLM elige acciones permitidas y evidencia; el texto explicativo se construye con los datos verificados.
+Las tres etapas usan respuestas estructuradas y validación semántica. El riesgo siempre procede de la red neuronal. Hasta 20 clientes de mayor riesgo reciben revisión LLM; todos los demás mantienen inferencia y recomendaciones por reglas explícitas. Si falla el proveedor, se informa sin simular respuestas exitosas. El aviso junto a Analizar explica el envío de indicadores sin códigos al proveedor.
 
-### Alternativa Groq
-
-Configurar `LLM_PROVIDER=groq` y `GROQ_API_KEY` exclusivamente en Render o `.env`; opcional `GROQ_MODEL=openai/gpt-oss-20b`. El adaptador usa JSON Schema estricto, valida la respuesta y conserva los controles semánticos del supervisor. Hace como máximo dos intentos, sujetos al presupuesto. Las pruebas con dobles no acreditan disponibilidad real: usar **Probar LLM con ejemplos, sin clave** para verificarla. La configuración por defecto continúa siendo Gemini hasta que el administrador elija Groq.
-
-Documentación: [salidas estructuradas Groq](https://console.groq.com/docs/structured-outputs). No publicar claves en el repositorio ni introducirlas en el frontend.
+Presupuesto predeterminado: 50 intentos de proveedor/día; 10 análisis públicos con LLM/día (`PUBLIC_LLM_DAILY_LIMIT`). Por análisis: una llamada predictiva, hasta dos de retención y una de supervisión. Límite total 60 segundos y 32 mensajes. Estos límites no garantizan disponibilidad o cuota del proveedor.
 
 ## Datos y API
 
@@ -53,8 +49,8 @@ DEMO-001,24,5,800,2,30,1
 | `GET /api/config` | Configuración no sensible | Público |
 | `GET /api/metrics` | Diagnóstico medido del artefacto | Público |
 | `POST /api/demo` | Datos sintéticos fijos, sin persistencia | Público |
-| `POST /api/public/analyze` | JSON: hasta 300 clientes, reglas, sin guardar ni enviar a LLM | Público |
-| `POST /api/public/analyze-csv` | CSV validado, sin guardar ni enviar a LLM | Público |
+| `POST /api/public/analyze` | JSON: hasta 300 clientes, LLM con consentimiento, sin persistencia | Público |
+| `POST /api/public/analyze-csv` | CSV validado; use_llm y consent; sin persistencia | Público |
 | `POST /api/demo/llm` | Prueba LLM con ejemplos fijos y presupuesto limitado | Público |
 | `POST /api/runs/{id}/approve-pending` | Acepta pendientes sin sobrescribir rechazos; no ejecuta acciones | Bearer |
 | `POST /api/analyze` | JSON con `customers`, `use_llm`, `consent_external_processing` | Bearer |

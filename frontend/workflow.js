@@ -6,7 +6,7 @@ const toolNames={analysis_request:'Recibió la solicitud',delegate_prediction:'D
 function renderWorkspace(){
  const loaded=!!current?.predictions?.length;
  document.body.classList.toggle('has-analysis',loaded);
- $('workspace-start').hidden=loaded;
+ $('workspace-start').hidden=false;
  $('workspace-context').hidden=!loaded;
  if(loaded){
   $('workspace-context').innerHTML=`<span><b>${current.demo?'Cartera de demostración':'Cartera cargada'}</b> · ${current.predictions.length} clientes · ${esc(new Date(current.created).toLocaleString('es-PE'))}</span><button class="text-button" data-view="agents">${current.status==='completed'?'Ver ejecución de agentes':'Revisar ejecución interrumpida'} →</button>`;
@@ -16,11 +16,11 @@ function renderWorkspace(){
  updateWorkflow();
 }
 function updateWorkflow(){
- document.querySelectorAll('.workflow-step').forEach(b=>{const selected=b.dataset.view===activeView||(activeView==='dashboard'&&b.dataset.view==='segments'&&current);b.classList.toggle('selected',!!selected);if(selected)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
+ document.querySelectorAll('.workflow-step').forEach(b=>{const selected=b.dataset.view===activeView||(activeView==='dashboard'&&b.dataset.view==='analysis');b.classList.toggle('selected',!!selected);if(selected)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});
 }
 function renderAgentWorkspace(){
  const target=$('agent-workspace');
- if(!current?.predictions?.length){target.innerHTML='<article class="start-card"><span class="eyebrow">EJECUCIÓN OBSERVABLE</span><h2>De los indicadores a una decisión revisable.</h2><p>Ejecuta una cartera y selecciona un cliente para inspeccionar lo que recibió, calculó y entregó cada agente.</p><div class="agent-path"><span>01 · Predictivo</span><i>→</i><span>02 · Retención</span><i>→</i><span>03 · Supervisor</span></div><button class="primary" data-demo-agents>Ejecutar ejemplo y ver agentes</button> <button class="secondary" data-view="analysis">Usar mis datos</button></article>';return;}
+ if(!current?.predictions?.length){target.innerHTML='<article class="start-card"><span class="eyebrow">EJECUCIÓN OBSERVABLE</span><h2>De los indicadores a una decisión revisable.</h2><p>Ejecuta una cartera y selecciona un cliente para inspeccionar lo que recibió, calculó y entregó cada agente.</p><div class="agent-path"><span>01 · Predictivo</span><i>→</i><span>02 · Retención</span><i>→</i><span>03 · Supervisor</span></div><button class="primary" data-view="analysis">Ir a Inicio →</button></article>';return;}
  const p=selected(inspectedCustomer)||current.predictions[0];inspectedCustomer=p.cliente_id;
  const r=current.recommendations.find(x=>x.cliente_id===p.cliente_id),s=current.agent_report?.supervisor;
  const messages=current.trace.filter(m=>m.sender===inspectedAgent||m.recipient===inspectedAgent);

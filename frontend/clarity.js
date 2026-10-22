@@ -1,20 +1,20 @@
 'use strict';
 function approvePendingLocal(run){
  if(!(run?.demo||run?.ephemeral)||run.status!=='completed')throw Error('Esta ejecución no admite aprobación temporal.');
- let count=0;for(const r of run.recommendations){if(r.decision==='pending'){r.decision='approved';count++;}}
+ let count=0;for(const r of run.recommendations){if(r.decision==='pending'&&r.supervisor_review?.action!=='request_review'){r.decision='approved';count++;}}
  return count;
 }
 if(typeof module!=='undefined')module.exports={approvePendingLocal};
 function validateAnalysisMode(saved){
- if(saved&&!apiKey)throw Error('Guardar en historial es opcional y requiere acceso de administrador. Desmarca esa opción para analizar sin clave.');
- if(!saved&&$('use-llm').checked)throw Error('Para probar el LLM sin clave, usa la prueba con ejemplos en Agentes. Tus datos pueden analizarse ahora desmarcando la opción LLM.');
+ if(saved&&!apiKey)throw Error('Para guardar en el historial privado, valida el acceso de administrador en Configuración.');
+ if($('use-llm').checked&&!$('consent').checked)throw Error('Autoriza el procesamiento de indicadores para obtener las recomendaciones de los agentes.');
 }
 function recordLocalDecisions(){
  current.local_decisions=current.recommendations.filter(r=>r.decision!=='pending').map(r=>({cliente_id:r.cliente_id,decision:r.decision,persisted:false,synthetic:!!current.demo,external_action_executed:false}));
 }
 let explanationCustomer='';
 function renderClarity(){
- const target=$('explicit-analysis'),recs=current?.recommendations||[],pending=recs.filter(r=>r.decision==='pending').length;
+ const target=$('explicit-analysis'),recs=current?.recommendations||[],pending=recs.filter(r=>r.decision==='pending'&&r.supervisor_review?.action!=='request_review').length;
  $('approve-all').disabled=!pending||current?.status!=='completed';
  $('approve-all').textContent=`Aceptar todas las pendientes (${pending})`;
  $('bulk-summary').textContent=current?`${pending} pendientes · ${recs.filter(r=>r.decision==='approved').length} aceptadas · ${recs.filter(r=>r.decision==='rejected').length} rechazadas. ${current.demo||current.ephemeral?'Se conservarán solo en esta pestaña y en tu exportación.':'Se registrarán en el historial privado.'}`:'Ejecuta un análisis para revisar sus propuestas.';

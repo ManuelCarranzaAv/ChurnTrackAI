@@ -18,6 +18,17 @@ STAGE_PROMPTS = {
 class ProviderError(Exception):
     pass
 
+def provider_schema(stage):
+    schema = LLMResponse.model_json_schema()
+    fields = schema['$defs']['LLMChoice']['properties']
+    fields['action']['enum'] = {
+        'predictivo':['interpret_risk','review_data'],
+        'supervisor':['approve_plan','request_review'],
+        'retencion':['contact','monitor','reactivate','claims','payments','review_data'],
+    }[stage]
+    fields['evidence']['items']['enum'] = ['probability','antiguedad','compras_mensuales','monto_promedio','reclamos','dias_ultima_compra','pagos_atrasados']
+    return schema
+
 def explain_error(code):
     if code == 'LLM_NOT_CONFIGURED':
         return 'Falta la clave del proveedor LLM en el servidor. Puedes usar el análisis neuronal con reglas.'
@@ -46,7 +57,7 @@ class GeminiProvider:
             raise ProviderError('LLM_NOT_CONFIGURED')
         body = {'system_instruction':{'parts':[{'text':STAGE_PROMPTS.get(stage,SYSTEM_PROMPT)}]},
                 'contents':[{'role':'user','parts':[{'text':json.dumps(payload)}]}],
-                'generationConfig':{'temperature':0.1,'maxOutputTokens':2048,'responseMimeType':'application/json','responseJsonSchema':LLMResponse.model_json_schema()}}
+                'generationConfig':{'temperature':0.1,'maxOutputTokens':2048,'responseMimeType':'application/json','responseJsonSchema':provider_schema(stage)}}
         try:
             async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
                 response = await client.post(f'https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent', headers={'x-goog-api-key':self.key}, json=body)
@@ -88,7 +99,7 @@ class GroqProvider:
                              {'role': 'user', 'content': json.dumps(payload)}],
                 'response_format': {'type': 'json_schema', 'json_schema': {
                     'name': 'retention_choices', 'strict': True,
-                    'schema': LLMResponse.model_json_schema()}}}
+                    'schema': provider_schema(stage)}}}
         try:
             async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
                 response = await client.post('https://api.groq.com/openai/v1/chat/completions',

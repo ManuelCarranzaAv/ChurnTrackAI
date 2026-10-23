@@ -60,7 +60,7 @@ def test_groq_adapter_validates_schema_and_usage(monkeypatch):
         assert body['response_format']['json_schema']['strict'] is True
         return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps({'choices':[{'index':0,'action':'monitor','evidence':['probability']}]})}}], 'usage':{'prompt_tokens':11,'completion_tokens':9,'total_tokens':20}})
     monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(respond),**kw))
-    parsed,usage=asyncio.run(provider.choose([{'index':0,'probability':.1,'allowed_actions':['monitor']}]))
+    parsed,usage=asyncio.run(provider.choose([{'index':0,'probability':.1,'risk':'BAJO','observed':{k:v for k,v in ROW.items() if k!='cliente_id'},'allowed_actions':['monitor']}]))
     assert parsed.choices[0].action=='monitor' and usage['provider']=='groq' and usage['total_tokens']==20
 
 

@@ -1,7 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const pct = p => (p*100).toFixed(1)+'%';
+const pct = p => p>0&&p<0.0005?'<0.1%':p<1&&p>=0.9995?'>99.9%':(p*100).toFixed(1)+'%';
 const labels = {antiguedad:'Antigüedad (meses)',compras_mensuales:'Compras mensuales',monto_promedio:'Monto promedio (S/)',reclamos:'Reclamos registrados',dias_ultima_compra:'Días desde última compra',pagos_atrasados:'Pagos atrasados'};
 const pages = {dashboard:['Inicio','Analiza el churn de tus clientes.','Ingresa los datos, revisa el diagnóstico y acepta las recomendaciones.'],analysis:['Datos y análisis','Prepara tu cartera para el análisis.','Carga un CSV o revisa un cliente individual. Después podrás inspeccionar los agentes.'],segments:['Diagnóstico','¿Qué clientes necesitan atención?','Explora la cartera y comprende sus señales de riesgo.'],agents:['Recomendaciones','Revisa la recomendación de cada cliente.','Observa la delegación, las herramientas y la validación de cada ejecución.'],recommendations:['Aceptación','Acepta las propuestas que has revisado.','Estrategias sustentadas en datos, bajo tu supervisión.'],reports:['Evaluación e historial','La evidencia detrás del modelo.','Métricas reproducibles, limitaciones e historial de análisis.'],settings:['Configuración','Tu espacio de trabajo.','Acceso, servicios y criterios para interpretar los resultados.']};
 let current = null, config = null, apiKey = '', activeView = 'dashboard', tablePage=0, recPage=0;

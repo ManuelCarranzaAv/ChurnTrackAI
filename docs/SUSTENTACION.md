@@ -84,3 +84,17 @@ K1–K3: completar personalmente las declaraciones del Word tras verificar autor
 
 ## Guion de video (4 minutos)
 0:00–0:30 problema y límites; 0:30–1:15 Inicio y análisis; 1:15–2:00 Diagnóstico; 2:00–3:00 seleccionar cliente y mostrar los tres agentes con respuesta real; 3:00–3:30 aceptar/exportar; 3:30–4:00 evaluación e historial. No grabar secretos. Añadir enlace real en A7.
+
+
+## Evidencia pública verificada de esta actualización
+
+Ejecución `3fd5cf6e-904f-43d3-96bb-5977c529b539`, cliente sintético individual, Groq `openai/gpt-oss-20b`: Predictivo, Retención y Supervisor respondieron y validaron su salida. Tiempo backend 2529,44 ms; tres llamadas, 1758 tokens de entrada y 903 de salida (2661 total). Informe completo: [three-agent-live.json](../evidence/three-agent-live.json). La pantalla permitió continuar desde Diagnóstico hasta aceptación y registrar una propuesta aprobada temporalmente.
+
+También se cargaron 300 clientes por CSV. La primera prueba se ejecutó inmediatamente después de la individual y registró HTTP 429 en Retención/Supervisor; conservó las 300 recomendaciones indicando reglas. Esto demuestra manejo de cuota, no tres respuestas LLM exitosas para ese lote. El proveedor puede imponer límites por minuto además del presupuesto diario de la aplicación.
+
+Capturas locales de esta revisión: evidence/journey-home-public.png, journey-diagnosis-public.png, journey-agents-public.png y journey-acceptance-public.png. Incorporarlas en el informe/video. La aplicación registra la ejecución terminada; no transmite el razonamiento interno del modelo en vivo.
+
+
+## Actualización de experiencia (22/10/2026)
+
+Se incorporó vista previa validada del CSV (cinco registros y conteo total) sin consumir LLM. Inicio diferencia cliente individual y cartera; Diagnóstico presenta distribución accionable; los agentes muestran entrada, herramienta y salida por cliente. Las consultas compactan nombres repetidos y planes idénticos, conservando indicadores y controles. Se aprobaron 63 pruebas backend. La disponibilidad LLM de la nueva versión se acredita con evidencia separada, no únicamente con tests.

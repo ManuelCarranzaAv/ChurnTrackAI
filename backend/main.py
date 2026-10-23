@@ -219,8 +219,15 @@ def create_app(db_url=None):
     @app.post('/api/public/analyze-csv')
     async def public_csv(request:Request,use_llm:bool=False,consent:bool=False):
         if set(request.query_params)-{'use_llm','consent'}:
-            raise HTTPException(422,'El CSV público se procesa sin LLM ni almacenamiento.')
+            raise HTTPException(422,'Opciones permitidas: use_llm y consent. El análisis público no se guarda.')
         return await execute_public(await parse_csv(request,use_llm,consent))
+
+    @app.post('/api/public/validate-csv')
+    async def validate_csv(request:Request):
+        payload = await parse_csv(request)
+        return {'valid':True,'count':len(payload.customers),
+                'preview':[c.model_dump() for c in payload.customers[:5]],
+                'llm_called':False,'persisted':False}
 
     @app.get('/api/runs',dependencies=[Depends(authorized)])
     def runs():

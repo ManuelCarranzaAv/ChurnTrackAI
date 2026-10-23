@@ -122,3 +122,12 @@ En Inicio, **Iniciar recorrido con Gemini** ejecuta tres casos ficticios sin cla
 
 `POST /api/demo/gemini` solo admite fixtures internos: sin cuerpo ni parámetros, caché explícito de diez minutos, una ejecución concurrente y hasta cinco nuevas demostraciones diarias con LLM (máximo dos intentos cada una), sujeto además al presupuesto global y a la persistencia del almacenamiento. Datos propios e historiales siguen requiriendo autorización. 37 pruebas pasan; las pruebas reales recientes de Google siguen sin acreditar una generación exitosa.
 
+
+
+## Experiencia de trabajo y calidad de datos
+
+Inicio ofrece análisis individual o carga de cartera. Al elegir un CSV, `/api/public/validate-csv` valida todas las filas y devuelve cinco registros de vista previa sin inferencia, LLM ni persistencia. El análisis sigue usando el contrato validado completo. La interfaz evita envíos duplicados mientras hay una operación en curso.
+
+Diagnóstico resume niveles de riesgo y permite filtrar. Recomendaciones muestra, por cliente, entrada, herramienta, salida, cobertura LLM y mensajes reales de cada agente. Aceptación conserva control humano y excluye observaciones del Supervisor de la aceptación masiva. La versión visible muestra resultados completados, no progreso ni razonamiento inventados.
+
+Para un piloto empresarial faltan datos históricos reales con una definición y horizonte de abandono, evaluación temporal y calibración, identidad individual de revisores, almacenamiento durable e integración autorizada de tareas. El sistema actual no acredita reducción de churn ni pérdidas monetarias previstas.

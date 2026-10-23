@@ -82,7 +82,7 @@ El archivo ZIP de entrega conserva fuentes y artefactos para subir a un reposito
 
 ## Acceso para el profesor
 
-El enlace público permite ejecutar 12 o 300 ejemplos sintéticos sin clave y sin consumir Gemini. Para cargar datos propios se requiere APP_API_KEY, validada por `/api/session`. GEMINI_API_KEY permanece exclusivamente en el servidor. No compartir claves del proveedor.
+El enlace público permite ejecutar 12 o 300 ejemplos sintéticos sin clave y sin consumir Gemini. Para analizar datos propios temporalmente no se necesita APP_API_KEY. Solo el guardado y consulta del historial privado requiere validarla mediante `/api/session`. GEMINI_API_KEY permanece exclusivamente en el servidor. No compartir claves del proveedor.
 
 Render Free no establece una caducidad fija para este servicio web: se suspende después de 15 minutos sin tráfico y vuelve a arrancar con una visita, normalmente en aproximadamente un minuto. Hay 750 horas gratuitas por espacio de trabajo y mes, además de cuotas de transferencia y compilación. El enlace puede compartirse mientras el servicio y la cuenta estén activos y dentro de cuota. SQLite se pierde al suspender, reiniciar o desplegar; exportar informes. No se ha contratado un plan de pago ni se promete disponibilidad continua. Fuente: https://render.com/docs/free (consultada 21/10/2026).
 

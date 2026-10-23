@@ -98,3 +98,8 @@ Capturas locales de esta revisión: evidence/journey-home-public.png, journey-di
 ## Actualización de experiencia (22/10/2026)
 
 Se incorporó vista previa validada del CSV (cinco registros y conteo total) sin consumir LLM. Inicio diferencia cliente individual y cartera; Diagnóstico presenta distribución accionable; los agentes muestran entrada, herramienta y salida por cliente. Las consultas compactan nombres repetidos y planes idénticos, conservando indicadores y controles. Se aprobaron 63 pruebas backend. La disponibilidad LLM de la nueva versión se acredita con evidencia separada, no únicamente con tests.
+
+
+## Verificación final pública (23/10/2026)
+
+La versión 47895b8 procesó 300 clientes sintéticos en 4686,2 ms. Predictivo, Retención y Supervisor validaron respuestas Groq para 20 clientes priorizados cada uno. El resto mantuvo recomendaciones por reglas. Hubo 3 llamadas válidas, 5457 tokens de entrada y 1723 de salida (7180 total); no se midió facturación. La vista previa validó 300 filas sin llamar al LLM. Resumen verificable: [redesign-verification.json](../evidence/redesign-verification.json). No garantiza ausencia futura de cuota ni rendimiento empresarial.

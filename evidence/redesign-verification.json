@@ -1,0 +1,568 @@
+{
+  "id": "2194fb63-4f8d-4995-a0d2-0ec6af6143c3",
+  "created": "2026-10-23T06:24:57.354472+00:00",
+  "status": "completed",
+  "summary": {
+    "customers": 300,
+    "high": 186,
+    "medium": 16,
+    "low": 98
+  },
+  "elapsed_ms": 4686.2,
+  "agent_llm": {
+    "predictivo": {
+      "status": "validated",
+      "checked_indices": [
+        210,
+        219,
+        83,
+        9,
+        110,
+        230,
+        103,
+        87,
+        16,
+        157,
+        187,
+        153,
+        286,
+        185,
+        188,
+        143,
+        102,
+        108,
+        265,
+        197
+      ],
+      "choices": [
+        {
+          "index": 210,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 219,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 83,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 9,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 110,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 230,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 103,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 87,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 16,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 157,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 187,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 153,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 286,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 185,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 188,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 143,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 102,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 108,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 265,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        },
+        {
+          "index": 197,
+          "action": "interpret_risk",
+          "evidence": [
+            "probability",
+            "antiguedad",
+            "compras_mensuales",
+            "monto_promedio",
+            "reclamos",
+            "dias_ultima_compra",
+            "pagos_atrasados"
+          ]
+        }
+      ],
+      "usage": {
+        "provider": "groq",
+        "model": "openai/gpt-oss-20b",
+        "input_tokens": 1309,
+        "output_tokens": 1012,
+        "total_tokens": 2321
+      }
+    },
+    "supervisor": {
+      "status": "validated",
+      "checked_indices": [
+        210,
+        219,
+        83,
+        9,
+        110,
+        230,
+        103,
+        87,
+        16,
+        157,
+        187,
+        153,
+        286,
+        185,
+        188,
+        143,
+        102,
+        108,
+        265,
+        197
+      ],
+      "choices": [
+        {
+          "index": 210,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 219,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 83,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 9,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 110,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 230,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 103,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 87,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 16,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 157,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 187,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 153,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 286,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 185,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 188,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 143,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 102,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 108,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 265,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        },
+        {
+          "index": 197,
+          "action": "request_review",
+          "evidence": [
+            "probability"
+          ]
+        }
+      ],
+      "usage": {
+        "provider": "groq",
+        "model": "openai/gpt-oss-20b",
+        "input_tokens": 1633,
+        "output_tokens": 371,
+        "total_tokens": 2004
+      }
+    },
+    "retencion": {
+      "status": "validated",
+      "checked_indices": [
+        9,
+        16,
+        83,
+        87,
+        102,
+        103,
+        108,
+        110,
+        143,
+        153,
+        157,
+        185,
+        187,
+        188,
+        197,
+        210,
+        219,
+        230,
+        265,
+        286
+      ]
+    }
+  },
+  "llm_report": {
+    "requested": true,
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "api": "chat/completions",
+    "status": "validated",
+    "attempts": [
+      {
+        "agent": "predictivo",
+        "attempt": 1,
+        "status": "validated",
+        "elapsed_ms": 1641.06
+      },
+      {
+        "agent": "retencion",
+        "attempt": 1,
+        "status": "validated",
+        "elapsed_ms": 837.11
+      },
+      {
+        "agent": "supervisor",
+        "attempt": 1,
+        "status": "validated",
+        "elapsed_ms": 995.03
+      }
+    ],
+    "message": "El LLM respondió y su selección pasó los controles.",
+    "usage": [
+      {
+        "provider": "groq",
+        "model": "openai/gpt-oss-20b",
+        "input_tokens": 1309,
+        "output_tokens": 1012,
+        "total_tokens": 2321,
+        "agent": "predictivo"
+      },
+      {
+        "provider": "groq",
+        "model": "openai/gpt-oss-20b",
+        "input_tokens": 2515,
+        "output_tokens": 340,
+        "total_tokens": 2855,
+        "agent": "retencion"
+      },
+      {
+        "provider": "groq",
+        "model": "openai/gpt-oss-20b",
+        "input_tokens": 1633,
+        "output_tokens": 371,
+        "total_tokens": 2004,
+        "agent": "supervisor"
+      }
+    ],
+    "identifiers_sent": false,
+    "selected_customers": 20
+  },
+  "warnings": [
+    "El LLM se solicita para los 20 clientes de mayor probabilidad; los restantes utilizan reglas explícitas.",
+    "El supervisor LLM solicita revisión humana adicional para algunas propuestas; consulta sus observaciones antes de aceptar."
+  ],
+  "evidence_note": "Resumen de ejecución HTTP pública real con 300 clientes sintéticos, versión 47895b8. Se conserva traza completa local en redesign-batch-live.json."
+}

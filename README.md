@@ -2,7 +2,7 @@
 
 Plataforma académica de analítica predictiva B2B con red neuronal real y tres agentes coordinados: predictivo, retención y supervisor. Reutiliza los pesos de `modelo.js`, añade API Python, persistencia, dashboard y revisión humana.
 
-**Estado:** aplicación publicada en https://churntrackai.onrender.com/. Flujo Inicio → Diagnóstico → Recomendaciones → Aceptación. Análisis individual y CSV hasta 300 clientes; Groq configurado en servidor. Tres roles consultan al LLM para hasta 20 clientes priorizados. Modelo académico sintético, no validado con empresas. Guía del cuestionario: [SUSTENTACION.md](docs/SUSTENTACION.md).
+**Estado:** aplicación publicada en https://churntrackai.onrender.com/. Flujo Inicio → Diagnóstico → Recomendaciones → Aceptación. Análisis individual y CSV hasta 300 clientes; Groq configurado en servidor. Tres roles consultan al LLM para hasta 20 clientes priorizados. Modelo académico sintético, no validado con empresas.
 
 ## Inicio rápido
 
@@ -96,7 +96,7 @@ models/       Pesos, escalador y evaluación medidos
 data/         Demo, plantilla y diagnóstico sintéticos
 scripts/      Inicio, exportación/evaluación, entrenamiento y evidencias
 tests/        Pruebas de integración, seguridad y agentes
-docs/         Auditoría, arquitectura, requisitos, despliegue y sustentación
+docs/         Auditoría, arquitectura, requisitos y despliegue
 evidence/     Pruebas, traza, medidas y capturas LOCALES
 original/     Referencias originales preservadas
 runtime/      Base de datos local y temporales; excluidos de Git
@@ -111,9 +111,8 @@ El notebook original se conserva localmente y se excluye de publicación automá
 - [Requisitos y aceptación](docs/REQUISITOS.md)
 - [Guía Render y costos](docs/DESPLIEGUE.md)
 - [Evidencias y pruebas](docs/EVIDENCIAS.md)
-- [Material para el cuestionario y video](docs/SUSTENTACION.md)
 
-Pendientes: generación real exitosa de Gemini (proveedor indisponible en la última prueba), comprobación HTTPS desde otro equipo, cuestionario correcto A1–K3, integrantes y video. No hay URLs públicas inventadas ni declaraciones académicas marcadas como cumplidas sin evidencia.
+Pendientes técnicos: validación con datos empresariales, almacenamiento durable y comprobación desde otro dispositivo. Groq cuenta con evidencia pública de respuestas válidas; el adaptador Gemini no tiene una generación exitosa acreditada.
 
 
 ## Recorrido para el profesor

@@ -14,4 +14,4 @@ Frontend HTML/CSS/JS → FastAPI → Supervisor → Predictivo → Retención �
 - Aceptar todas excluye request_review y no cambia decisiones ya tomadas. Aceptación individual conserva control humano. Ninguna aceptación ejecuta acciones externas.
 - No RAG, memoria vectorial, CRM ni envío de correo. Sin identidad individual de revisor.
 
-Detalles de contratos, límites, pruebas y evidencia real en SUSTENTACION.md, README.md y evidence/. El registro visible de los agentes representa la ejecución completada; no es streaming en vivo.
+Detalles de contratos, límites, pruebas y evidencia real en README.md y evidence/. El registro visible de los agentes representa la ejecución completada; no es streaming en vivo.

@@ -13,5 +13,4 @@ node_modules/
 models/retrained/
 evidence/private*
 original/*.ipynb
-docs/cuestionario-original.txt
 *.zip

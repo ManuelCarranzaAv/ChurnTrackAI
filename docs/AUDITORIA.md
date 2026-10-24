@@ -1,6 +1,6 @@
 # Auditoría técnica de ChurnTrackAI
 
-Se inspeccionaron los cuatro archivos del proyecto original, el notebook suministrado y el Word indicado. Los originales se preservaron en `original/`. La aplicación integrada se desarrolla en la carpeta de trabajo ANALISIS DE ABANDONO; no se sobrescribió la carpeta del escritorio.
+Se inspeccionaron los cuatro archivos del proyecto original, el notebook suministrado. Los originales se preservaron en `original/`. La aplicación integrada se desarrolla en la carpeta de trabajo ANALISIS DE ABANDONO; no se sobrescribió la carpeta del escritorio.
 
 ## Hallazgos y decisiones
 
@@ -14,7 +14,6 @@ Se inspeccionaron los cuatro archivos del proyecto original, el notebook suminis
 | Notebook | Genera 1.500 registros sintéticos, no usa una base de empresas reales | Señalar origen sintético en UI, evaluación, documentación y demo |
 | Artefacto y notebook | Medias del escalador distintas | No atribuir las métricas del notebook al modelo servido. Registrar discrepancia y evaluar por separado |
 | Backend y agentes originales | No existen API, persistencia, LLM ni coordinación multiagente | Implementar módulos nuevos y probar su colaboración |
-| Cuestionario | El Word recibido trata de inversiones en oro y plata, producto Aurum; contiene enlaces y respuestas ajenos a churn | No reutilizar sus afirmaciones ni URLs. El usuario indicó que aportará otro cuestionario |
 
 ## Dataset y modelo del notebook
 

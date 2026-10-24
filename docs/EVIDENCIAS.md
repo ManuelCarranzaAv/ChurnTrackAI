@@ -15,6 +15,6 @@ Las pruebas se realizaron con datos sintéticos. No acreditan efectividad comerc
 | HTTP local | `evidence/http-measurements.json` | Cinco muestras por endpoint; no mide Internet ni producción |
 | Interfaz y aprobación | `evidence/dashboard-local.png`, `evidence/approval-local.png` | Capturas de sesiones locales |
 
-Limitaciones: cuestionario correcto A1–K3 e integrantes pendientes; no se realizó validación empresarial ni grabación de video. La publicación se documenta separadamente tras verificar una URL real. SQLite en Render Free es efímero. Las aprobaciones no ejecutan acciones externas.
+Limitaciones: no se realizó validación empresarial. La publicación se documenta separadamente tras verificar una URL real. SQLite en Render Free es efímero. Las aprobaciones no ejecutan acciones externas.
 
 Actualización 21/10/2026: 33 pruebas aprobadas; /health, inicio y demo públicos respondieron HTTP 200. La interfaz publicada procesó la demo de 300, validó la clave privada, ejecutó un análisis individual y mostró correctamente la indisponibilidad real de Gemini. Evidencia HTTP en evidence/http-measurements-public.json. No es una prueba desde otro dispositivo físico.

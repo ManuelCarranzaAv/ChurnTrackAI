@@ -21,7 +21,7 @@ Render no recomienda sus instancias gratuitas para producción empresarial. El p
 ## Preparar GitHub
 
 1. Conectar GitHub en esta conversación o iniciar sesión en el navegador disponible. No transmitir tokens por chat.
-2. Crear un repositorio del proyecto. Revisar `git status` y confirmar que `.env`, `runtime/`, `.venv/`, el cuestionario ajeno y el notebook con metadatos quedan excluidos.
+2. Crear un repositorio del proyecto. Revisar `git status` y confirmar que `.env`, `runtime/`, `.venv/` y el notebook con metadatos quedan excluidos.
 3. Publicar el código, modelos JSON, datos sintéticos y documentación. No incluir bases de datos con clientes.
 4. Registrar la URL real del repositorio y el commit desplegado en `evidence/deployment.json` cuando existan.
 

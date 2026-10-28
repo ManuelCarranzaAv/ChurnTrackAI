@@ -67,9 +67,11 @@ def compact_payload(payload):
     try:
         for item in payload:
             row = {key:item[key] for key in ('index','probability','risk','allowed_actions')}
+            # Three decimals keep the evidence and make the agents' justifications readable.
+            row['probability'] = round(float(row['probability']), 3)
             row['observed'] = {key:item['observed'][key] for key in FEATURES if key in item['observed']}
             if item.get('action_impacts') is not None:
-                row['action_impacts'] = {key:float(value) for key, value in item['action_impacts'].items()}
+                row['action_impacts'] = {key:round(float(value), 3) for key, value in item['action_impacts'].items()}
             if item.get('predictive_review'):
                 row['predictive_review'] = {key:item['predictive_review'][key] for key in ('index','action','evidence')}
             if item.get('proposal'):

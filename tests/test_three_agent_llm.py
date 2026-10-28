@@ -102,3 +102,20 @@ def test_provider_schema_requires_reason():
     from backend.llm import provider_schema
     choice=provider_schema('retencion')['$defs']['LLMChoice']
     assert choice['required']==['index','action','evidence','reason'] and choice['additionalProperties'] is False
+
+def test_review_stage_retries_once_after_incomplete_answer(client):
+    class Flaky(ThreeStageProvider):
+        def __init__(self):
+            super().__init__();self.sup_calls=0
+        async def review(self,payload,stage):
+            if stage=='supervisor':
+                self.sup_calls+=1
+                if self.sup_calls==1:
+                    self.calls.append(stage)
+                    return LLMResponse(choices=[{'index':999,'action':'approve_plan','evidence':['probability']}]),{'total_tokens':5}
+            return await super().review(payload,stage)
+    provider=Flaky();client.app.state.supervisor.retention.provider=provider
+    run=client.post('/api/public/analyze',json={'customers':[ROW],'use_llm':True,'consent_external_processing':True}).json()
+    sup=[a for a in run['llm_report']['attempts'] if a['agent']=='supervisor']
+    assert [a['status'] for a in sup]==['failed','validated'] and run['agent_llm']['supervisor']['status']=='validated'
+    assert any(m['tool']=='supervisor_llm_result' and m['status']=='retry' for m in run['trace'])

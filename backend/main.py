@@ -74,7 +74,7 @@ def create_app(db_url=None):
     store = Store(db_url or os.getenv('DATABASE_URL') or f'sqlite:///{(RUNTIME / "churn.db").as_posix()}')
     model = NeuralModel()
     supervisor = SupervisorAgent(model,configured_provider(),store)
-    app = FastAPI(title='ChurnTrackAI',version='2.0.0',docs_url=None,redoc_url=None,openapi_url=None)
+    app = FastAPI(title='ChurnTrackAI',version='2.2.0',docs_url=None,redoc_url=None,openapi_url=None)
     app.add_middleware(BodyLimit)
     app.state.store, app.state.supervisor = store, supervisor
     app.state.calls = []
@@ -118,7 +118,7 @@ def create_app(db_url=None):
             with store.engine.connect() as db:
                 from sqlalchemy import text
                 db.execute(text('SELECT 1'))
-            return {'status':'ok','model':'loaded','database':'ok','version':'2.0.0'}
+            return {'status':'ok','model':'loaded','database':'ok','version':'2.2.0'}
         except Exception:
             return JSONResponse({'status':'degraded','database':'unavailable'},503)
 

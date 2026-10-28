@@ -11,7 +11,8 @@ from backend.schemas import FEATURES
 
 
 def rows(count=20):
-    return [{'index':i, 'probability':.8+i/1000, 'risk':'ALTO',
+    # Three decimals, the precision of the payload sent to the LLM.
+    return [{'index':i, 'probability':round(.8+i/1000, 3), 'risk':'ALTO',
              'observed':dict(zip(FEATURES, [24, 5, 800.5, 3, 90, 2])),
              'allowed_actions':['approve_plan','request_review'],
              'proposal':{'action':'claims','evidence':['reclamos'],

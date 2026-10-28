@@ -120,18 +120,38 @@ def brief(tool, payload):
         return {'facts':len(payload['facts'].get('hechos_verificados',payload['facts']))}
     return {k:v for k,v in payload.items() if isinstance(v,(str,int,float,bool))}
 
-def checked_reason(reason, p):
-    """Keep an LLM justification only if every number it cites exists in that customer's data."""
+def _number(token):
+    """Parse '1,500', '0.2723', '99,9' or '7' as a float; None if ambiguous."""
+    if ',' in token and '.' not in token:
+        head, tail = token.rsplit(',', 1)
+        token = token.replace(',', '') if len(tail) == 3 and head.replace(',', '').isdigit() else head.replace(',', '') + '.' + tail
+    else:
+        token = token.replace(',', '')
+    try:
+        return float(token)
+    except ValueError:
+        return None
+
+def checked_reason(reason, p, model=None):
+    """Keep an LLM justification only if every number it cites matches data the agent received.
+
+    Allowed: the customer's indicators, its probability (as fraction or percent), the simulated
+    impact of each action and the decision thresholds, all within rounding tolerance.
+    """
     reason = ' '.join((reason or '').split())[:240]
     if not reason:
         return ''
-    allowed = {str(i) for i in range(11)} | {'60', '100', '0.10', '0,10'}
-    for value in p.observed.values():
-        allowed |= {f'{value:g}', f'{value:,.0f}', f'{value:.0f}', f'{value:,.2f}'}
-    prob = p.probability*100
-    allowed |= {f'{prob:.0f}', f'{prob:.1f}', f'{prob:.1f}'.replace('.', ','), f'{p.probability:.2f}', f'{p.probability:.3f}', f'{p.probability:.1f}'}
-    cited = {t.rstrip('.,') for t in NUMBER.findall(reason)}
-    return reason if cited <= allowed else ''
+    known = [*p.observed.values(), p.probability, p.probability*100, 3, 2, 60, 0.10, 0.05, 15, 100, *range(11)]
+    for value in impacts(model, p).values() if model else []:
+        known += [value, value*100]
+    for token in NUMBER.findall(reason):
+        token = token.rstrip('.,')
+        value = _number(token)
+        decimals = len(token.replace(',', '.').split('.')[-1]) if any(c in token for c in '.,') else 0
+        tolerance = 0.5*10**-decimals + 1e-9
+        if value is None or not any(abs(value-k) <= tolerance for k in known):
+            return ''
+    return reason
 
 def llm_batch():
     # Free LLM tiers allow ~8k tokens per minute; 10 customers with justifications fit one analysis.
@@ -160,28 +180,35 @@ async def review_stage(stage, request, state, provider, store, model=None):
             row['action_impacts'] = impacts(model, p)
         payload.append(row)
     state.send(stage,'llm',stage+'_llm_request',{'input':payload,'identifiers_removed':True})
-    start = time.perf_counter()
-    try:
-        response, usage = await provider.review(payload,stage)
-        response = LLMResponse.model_validate(response.model_dump())
-        state.usage.append({**usage,'agent':stage})
-        if sorted(c.index for c in response.choices)!=sorted(indices):
-            raise ProviderError('INCOMPLETE_CHOICES')
-        by_index={r['index']:r for r in payload}
-        for c in response.choices:
-            if c.action not in by_index[c.index]['allowed_actions'] or not set(c.evidence).issubset({*state.predictions[c.index].observed,'probability'}):
-                raise ProviderError('UNSUPPORTED_RECOMMENDATION')
-        choices = [{**c.model_dump(),'reason':checked_reason(c.reason,state.predictions[c.index])} for c in response.choices]
-        report.update(status='validated',checked_indices=indices,choices=choices,usage=usage)
-        state.send('llm',stage,stage+'_llm_result',response.model_dump())
-        state.llm_attempts.append({'agent':stage,'attempt':1,'status':'validated','elapsed_ms':round((time.perf_counter()-start)*1000,2)})
-        if stage=='supervisor' and any(c.action=='request_review' for c in response.choices):
-            state.warnings.append('El supervisor LLM solicita revisión humana adicional para algunas propuestas; consulta sus observaciones antes de aceptar.')
-    except ProviderError as exc:
-        report.update(status='failed',reason=explain_error(str(exc)))
-        state.send('llm',stage,stage+'_llm_result',{'error':str(exc)},'error')
-        state.llm_attempts.append({'agent':stage,'attempt':1,'status':'failed','code':str(exc),'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
-        state.warnings.append(stage+': '+explain_error(str(exc)))
+    by_index = {r['index']:r for r in payload}
+    for attempt in (1, 2):
+        start = time.perf_counter()
+        try:
+            response, usage = await provider.review(payload,stage)
+            response = LLMResponse.model_validate(response.model_dump())
+            state.usage.append({**usage,'agent':stage})
+            if sorted(c.index for c in response.choices)!=sorted(indices):
+                raise ProviderError('INCOMPLETE_CHOICES')
+            for c in response.choices:
+                if c.action not in by_index[c.index]['allowed_actions'] or not set(c.evidence).issubset({*state.predictions[c.index].observed,'probability'}):
+                    raise ProviderError('UNSUPPORTED_RECOMMENDATION')
+            choices = [{**c.model_dump(),'reason':checked_reason(c.reason,state.predictions[c.index],model)} for c in response.choices]
+            report.update(status='validated',checked_indices=indices,choices=choices,usage=usage)
+            state.send('llm',stage,stage+'_llm_result',response.model_dump())
+            state.llm_attempts.append({'agent':stage,'attempt':attempt,'status':'validated','elapsed_ms':round((time.perf_counter()-start)*1000,2)})
+            if stage=='supervisor' and any(c.action=='request_review' for c in response.choices):
+                state.warnings.append('El supervisor LLM solicita revisión humana adicional para algunas propuestas; consulta sus observaciones antes de aceptar.')
+            return
+        except ProviderError as exc:
+            code = str(exc)
+            state.llm_attempts.append({'agent':stage,'attempt':attempt,'status':'failed','code':code,'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
+            # A malformed answer (skipped customer, unsupported action) gets one more chance; HTTP errors and quota do not.
+            retry = attempt == 1 and not code.startswith('HTTP_') and code != 'LLM_NOT_CONFIGURED' and store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50')))
+            state.send('llm',stage,stage+'_llm_result',{'error':code},'retry' if retry else 'error')
+            if not retry:
+                report.update(status='failed',reason=explain_error(code))
+                state.warnings.append(stage+': '+explain_error(code))
+                return
 
 class PredictiveAgent:
     def __init__(self, model):
@@ -257,7 +284,7 @@ class RetentionAgent:
             if selections and i in selections:
                 choice = selections[i]
                 rec = self.materialize(p,choice.action,'llm',choice.evidence)
-                rec.llm_reason = checked_reason(choice.reason, p)
+                rec.llm_reason = checked_reason(choice.reason, p, self.model)
                 # Keep the rule baseline so the UI can show where the LLM changed the decision.
                 rec.rule_baseline = rule_action(p, impacts(self.model, p))
                 recs.append(rec)

@@ -1,4 +1,25 @@
-# Publicación en Render y verificación
+# Publicación: Vercel y Render
+
+## Vercel
+
+La versión 2.0 se despliega en Vercel como función Python (FastAPI) sin Docker.
+
+- `pyproject.toml` → `[tool.vercel] entrypoint = "backend.main:app"`; dependencias idénticas a `requirements.txt`.
+- `app.mount('/assets', StaticFiles(...))` se promueve automáticamente a la CDN de Vercel.
+- `.vercelignore` excluye pruebas, evidencias, documentos y archivos de Render del paquete.
+- Con `VERCEL` definido, la base temporal se crea en `/tmp/churntrackai` (único directorio escribible). Es por instancia y se pierde: el análisis público no la necesita; las cuotas diarias del LLM quedan por instancia. Para cuotas globales e historial privado definir `DATABASE_URL` con PostgreSQL (por ejemplo Neon desde el Marketplace de Vercel).
+
+Pasos:
+
+1. Importar el repositorio `ManuelCarranzaAv/ChurnTrackAI` en Vercel (Add New → Project). Framework: detectado como FastAPI/Python; sin comando de build.
+2. En *Settings → Environment Variables* (Production y Preview) añadir, sin publicarlas en el repositorio ni en el chat:
+   - `LLM_PROVIDER=groq`, `GROQ_API_KEY=<clave>`, `GROQ_MODEL=openai/gpt-oss-20b`
+   - opcional: `APP_API_KEY` (modo privado), `LLM_DAILY_LIMIT=50`, `PUBLIC_LLM_DAILY_LIMIT=10`, `DATABASE_URL`.
+3. Desplegar. Verificar `/health` (versión 2.0.0), `/api/config` (`hosting: vercel`, `llm_configured: true`) y un análisis con LLM desde la interfaz: la vista **Agentes** debe mostrar “LLM validado” en los cuatro agentes.
+
+Con CLI: `npx vercel` (preview) y `npx vercel --prod`.
+
+## Render (despliegue original)
 
 ## Estado de publicación
 
@@ -12,7 +33,7 @@ Condiciones consultadas el 20 de octubre de 2026; revisar de nuevo al contratar.
 |---|---|---|
 | Render Free | 512 MB, 0,1 CPU. Suspensión tras 15 min sin tráfico; reactivación cercana a un minuto. Disco efímero. 750 horas gratuitas por workspace/mes | Principal; un contenedor FastAPI para todo |
 | Koyeb Free | 512 MB, 0,1 vCPU, 2 GB SSD; una instancia por organización, sin volumen; escala a cero tras 1 h | Alternativa Docker si está disponible para la cuenta |
-| Vercel con funciones Python | Admite FastAPI; esta aplicación requiere adaptar la persistencia y los límites al entorno de funciones | Se conserva el despliegue funcional en Render |
+| Vercel con funciones Python | Admite FastAPI; persistencia solo en /tmp o base externa | Adaptado en v2.0: principal para la entrega |
 
 Fuentes: [planes Render](https://render.com/docs/compute-plans), [servicios gratuitos Render](https://render.com/docs/free), [instancias Koyeb](https://www.koyeb.com/docs/reference/instances), [límites de funciones Vercel](https://vercel.com/docs/functions/limitations).
 

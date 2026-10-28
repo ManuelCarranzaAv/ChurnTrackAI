@@ -1,0 +1,17 @@
+[project]
+name = "churntrackai"
+version = "2.0.0"
+description = "Analítica de abandono B2B con red neuronal y cuatro agentes coordinados"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.156.4",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.1",
+    "httpx==0.28.1",
+    "python-dotenv==1.2.4",
+    "SQLAlchemy==2.1.5",
+    "psycopg[binary]==3.3.6",
+]
+
+[tool.vercel]
+entrypoint = "backend.main:app"

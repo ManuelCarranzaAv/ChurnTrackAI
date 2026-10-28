@@ -1,132 +1,94 @@
-# ChurnTrackAI
+# ChurnTrackAI 2.0
 
-Plataforma académica de analítica predictiva B2B con red neuronal real y tres agentes coordinados: predictivo, retención y supervisor. Reutiliza los pesos de `modelo.js`, añade API Python, persistencia, dashboard y revisión humana.
+Plataforma académica (curso **Tecnologías Emergentes**) de analítica de abandono para empresas **B2B**. Combina una **red neuronal real** con un **sistema de cuatro agentes coordinados** que convierten la predicción en un plan de retención priorizado por ingreso, verificable y aprobado por personas.
 
-**Estado:** aplicación publicada en https://churntrackai.onrender.com/. Flujo Inicio → Diagnóstico → Recomendaciones → Aceptación. Análisis individual y CSV hasta 300 clientes; Groq configurado en servidor. Tres roles consultan al LLM para hasta 20 clientes priorizados. Modelo académico sintético, no validado con empresas.
+> Modelo entrenado con datos sintéticos. Las cifras demuestran el flujo de trabajo; no son pérdidas contables ni predicciones sobre empresas reales.
 
-## Inicio rápido
+## Qué problema resuelve
 
-Python 3.13. Desde la raíz del proyecto en PowerShell:
+En B2B pocos clientes concentran mucho ingreso, y perder uno se nota. Un equipo de Customer Success necesita responder tres preguntas cada semana:
+
+1. **¿Quién está por irse?** → probabilidad de abandono por cliente (red neuronal 6→32→16→8→1).
+2. **¿Cuánto ingreso está en juego?** → ingreso mensual en riesgo = probabilidad × (compras mensuales × monto promedio), salud del cliente (0–100) y matriz **valor × riesgo** (Rescatar, Proteger, Automatizar, Mantener).
+3. **¿Qué hago y con qué impacto?** → acción de un playbook, responsable, plazo y una **simulación what-if** que re-ejecuta la red con la palanca resuelta (reclamos, pagos, recencia) para estimar la reducción de riesgo y el ingreso protegido.
+
+## Sistema multiagente
+
+| Agente | Responsabilidad | Herramientas | Uso del LLM (validado) |
+|---|---|---|---|
+| **Supervisor** | Orquesta, valida cada salida, recalcula simulaciones, pide corrección | Delegación, reintento, controles deterministas | Revisa consistencia: `approve_plan` / `request_review` |
+| **Predictivo** | Inferencia, explicación local, datos fuera de dominio | Red neuronal, sustitución a la media | Interpreta el riesgo: `interpret_risk` / `review_data` |
+| **Retención** | Elige la acción del playbook por cliente | Simulador what-if, catálogo de acciones | Selecciona acción usando `action_impacts` |
+| **Estratega** | Resumen ejecutivo de cartera para gerencia | Agregados, matriz valor × riesgo | Redacta texto; **se rechaza si cita cifras que no están en los datos** |
+
+Flujo: `usuario → Supervisor → Predictivo → Supervisor → Retención → Supervisor (valida + revisa) → Estratega → Supervisor → usuario`. Todo queda en una traza de mensajes (`SharedState`) descargable. El LLM (Groq `openai/gpt-oss-20b` o Gemini) nunca cambia probabilidades: responde con JSON restringido por esquema y cada respuesta se valida; si falla, se usan reglas explícitas y la interfaz lo declara. Sin códigos de cliente hacia el proveedor, presupuesto diario y límite de 60 s / 32 mensajes. Ninguna acción externa se ejecuta: la decisión final es humana.
+
+## Interfaz
+
+- **Nuevo análisis**: cartera de ejemplo (300 clientes), CSV propio (validado con vista previa) o un cliente; LLM opcional con consentimiento.
+- **Resumen ejecutivo**: brief del Estratega, KPI de ingreso en riesgo, matriz valor × riesgo interactiva, segmentos, prioridades, distribución y sensibilidad.
+- **Clientes**: búsqueda, filtros y ficha por cliente (salud, factores, recomendación, simulación, revisión de agentes, borrador de contacto).
+- **Agentes**: estado de cada agente, traza real de mensajes, uso de tokens y controles.
+- **Plan de acción**: aceptar/rechazar, aceptación conjunta que respeta las observaciones del Supervisor, exportación CSV con protección contra fórmulas.
+- **Simulador what-if** y **Modelo y método** (AUC, matriz de confusión, ROC, barreras y ruta a producción).
+
+HTML/CSS/JS sin dependencias ni compilación, modo claro/oscuro y diseño responsive.
+
+## Ejecutar localmente
+
+Python 3.12+:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -r requirements.txt
-.\.venv\Scripts\python scripts/setup_local.py
-.\.venv\Scripts\python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --no-access-log
+.\.venv\Scripts\python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Abrir [la aplicación local](http://127.0.0.1:8000). `scripts/start.ps1` también inicia el servidor. En este entorno ya se creó `.venv`; si `ensurepip` no está disponible, un Python con pip puede instalar dentro de ella con `python -m pip --python .venv\Scripts\python.exe install -r requirements.txt`.
-
-1. En **Inicio**, elegir **Cliente individual** o **Cartera CSV**, ingresar indicadores y pulsar **Analizar churn**. No se solicita clave de acceso para este análisis temporal.
-2. Revisar resultados y factores en **Diagnóstico**.
-3. En **Recomendaciones**, seleccionar cliente y agente: Predictivo interpreta evidencia; Retención propone una acción; Supervisor revisa la propuesta. Cada etapa indica si realmente respondió el LLM o si se usaron reglas. Descargar informe y traza JSON.
-4. En **Aceptación**, aceptar/rechazar individualmente o aceptar pendientes elegibles. Las propuestas marcadas para revisión adicional quedan fuera de la aceptación masiva. No se envían correos ni se modifica CRM.
-5. Exportar resultados antes de cerrar. **Opciones de guardado** permite historial privado con APP_API_KEY; la consulta pública al LLM no requiere esa clave.
-6. **Evaluación e historial** conserva métricas y consulta privada.
-
-## Proveedor LLM
-
-Configurar exclusivamente en Render Environment o .env ignorado: `LLM_PROVIDER=groq`, `GROQ_API_KEY`, `GROQ_MODEL=openai/gpt-oss-20b`. Alternativamente `LLM_PROVIDER=gemini`, `GEMINI_API_KEY` y `GEMINI_MODEL`. Nunca introducir claves en la interfaz ni versionarlas.
-
-Las tres etapas usan respuestas estructuradas y validación semántica. El riesgo siempre procede de la red neuronal. Hasta 20 clientes de mayor riesgo reciben revisión LLM; todos los demás mantienen inferencia y recomendaciones por reglas explícitas. Si falla el proveedor, se informa sin simular respuestas exitosas. El aviso junto a Analizar explica el envío de indicadores sin códigos al proveedor.
-
-Presupuesto predeterminado: 50 intentos de proveedor/día; 10 análisis públicos con LLM/día (`PUBLIC_LLM_DAILY_LIMIT`). Por análisis: una llamada predictiva, hasta dos de retención y una de supervisión. Límite total 60 segundos y 32 mensajes. Estos límites no garantizan disponibilidad o cuota del proveedor.
-
-## Datos y API
-
-CSV UTF-8 con coma o punto y coma, exactamente estas columnas:
-
-```csv
-cliente_id,antiguedad,compras_mensuales,monto_promedio,reclamos,dias_ultima_compra,pagos_atrasados
-DEMO-001,24,5,800,2,30,1
-```
-
-`cliente_id` admite letras ASCII, números, guion y guion bajo; máximo 48 caracteres. Los conteos deben ser enteros no negativos. No se permiten nulos, NaN, infinito, duplicados ni campos adicionales. Hasta 300 filas y 256 KB; LLM para los 20 clientes de mayor probabilidad; el resto usa reglas. Se rechaza el lote completo si una fila es inválida. Fuera del dominio sintético se pide revisar los datos antes de actuar.
-
-| Endpoint | Función | Acceso |
-|---|---|---|
-| `GET /health` | Estado de modelo y base | Público |
-| `GET /api/config` | Configuración no sensible | Público |
-| `GET /api/metrics` | Diagnóstico medido del artefacto | Público |
-| `POST /api/demo` | Datos sintéticos fijos, sin persistencia | Público |
-| `POST /api/public/analyze` | JSON: hasta 300 clientes, LLM con consentimiento, sin persistencia | Público |
-| `POST /api/public/analyze-csv` | CSV validado; use_llm y consent; sin persistencia | Público |
-| `POST /api/demo/llm` | Prueba LLM con ejemplos fijos y presupuesto limitado | Público |
-| `POST /api/runs/{id}/approve-pending` | Acepta pendientes sin sobrescribir rechazos; no ejecuta acciones | Bearer |
-| `POST /api/analyze` | JSON con `customers`, `use_llm`, `consent_external_processing` | Bearer |
-| `POST /api/analyze-csv` | Cuerpo `text/csv`; opciones `use_llm` y `consent` | Bearer |
-| `GET /api/runs` | Últimas 100 ejecuciones | Bearer |
-| `GET /api/runs/{id}` | Informe, traza y decisiones | Bearer |
-| `POST /api/runs/{id}/decisions/{cliente_id}` | `{"decision":"approved"}` o `rejected` | Bearer |
-| `GET /api/template.csv` | Plantilla de 12 clientes sintéticos | Público |
-
-## Reproducir las verificaciones
-
-```powershell
-.\.venv\Scripts\python -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python scripts/evaluate.py
-.\.venv\Scripts\python -m pytest -q --junitxml=evidence/tests.xml
-node --check frontend/app.js
-node tests/actions.cjs
-node tests/clarity.cjs
-# Con servidor local encendido:
-.\.venv\Scripts\python scripts/collect_evidence.py
-```
-
-`evaluate.py` requiere Node para comparar con el original. Ejecutó 204 comparaciones con error máximo 5,55e-17. Sobre 1.000 ejemplos sintéticos nuevos: accuracy 92,7%, precisión 95,08%, recall 94,10%, F1 94,59%, AUC 0,9814. Son resultados diagnósticos; no pertenecen al test original ni prueban generalización real. Ver `models/evaluation.json` y `docs/AUDITORIA.md`.
-
-El notebook original reportaba 92% de accuracy, pero su escalador no coincide con el exportado. Por tanto, no se atribuye esa métrica a esta versión. El procedimiento opcional `scripts/train.py`, con `requirements-training.txt`, entrena y exporta otro modelo en `models/retrained/`; no reemplaza automáticamente el servido. No ha sido ejecutado ni evaluado en esta entrega.
+Para el LLM, crear `.env` (ignorado por Git) con `LLM_PROVIDER=groq`, `GROQ_API_KEY=...`, `GROQ_MODEL=openai/gpt-oss-20b`. Nunca versionar claves.
 
 ## Despliegue
 
-Render es la opción principal. `Dockerfile` sirve frontend y backend en un solo servicio y `render.yaml` selecciona el plan Free. Seguir [la guía de publicación](docs/DESPLIEGUE.md). El contenedor incluye solo inferencia y runtime; no instala TensorFlow, NumPy ni pandas.
+- **Vercel** (nuevo): `pyproject.toml` declara `[tool.vercel] entrypoint = "backend.main:app"`; los estáticos de `/assets` se sirven desde la CDN. Ver [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md#vercel).
+- **Render**: `Dockerfile` + `render.yaml` siguen funcionando.
+
+En ambos planes gratuitos el almacenamiento SQLite es temporal. El análisis público no se guarda; para historial privado y cuotas compartidas entre instancias configurar `DATABASE_URL` con PostgreSQL (p. ej. Neon).
+
+## API principal
+
+| Endpoint | Función |
+|---|---|
+| `GET /health`, `GET /api/config`, `GET /api/metrics` | Estado, configuración no sensible, evaluación |
+| `POST /api/demo?size=12\|300` | Cartera sintética, sin LLM ni persistencia |
+| `POST /api/public/analyze` · `POST /api/public/analyze-csv` | Análisis temporal (JSON o CSV ≤300 filas, `use_llm` + consentimiento) |
+| `POST /api/public/validate-csv` | Validación y vista previa sin inferencia |
+| `POST /api/public/simulate` | Simulador what-if de un cliente (sin LLM ni almacenamiento) |
+| `POST /api/analyze`, `GET /api/runs`, decisiones | Modo privado con `APP_API_KEY` (Bearer) e historial persistido |
+
+CSV: `cliente_id,antiguedad,compras_mensuales,monto_promedio,reclamos,dias_ultima_compra,pagos_atrasados`.
+
+## Pruebas
 
 ```powershell
-docker compose up --build
+.\.venv\Scripts\python -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python -m pytest -q        # 70 pruebas: modelo, API, seguridad, 4 agentes, análisis de negocio
+node tests/actions.cjs                     # utilidades del frontend
 ```
 
-Docker no está instalado localmente; Render construyó el contenedor y confirmó el servicio live. Compose persiste SQLite en un volumen. Render Free no ofrece disco persistente: configurar PostgreSQL externo con `DATABASE_URL` si las trazas deben sobrevivir reinicios. PostgreSQL está soportado por código pero su conexión no se ha probado con una instancia real.
+## Evaluación del modelo
+
+Sobre 1.000 ejemplos sintéticos nuevos: AUC 0,981, exactitud 92,7 %, F1 0,946, Brier 0,053 (línea base “todos abandonan”: 67,8 %). El escalador exportado no coincide con el del notebook original, por lo que no se reutiliza su 92 %. Detalle en `models/evaluation.json` y [docs/AUDITORIA.md](docs/AUDITORIA.md).
+
+## Del prototipo a una empresa real
+
+Definir abandono y horizonte con negocio, reentrenar con históricos de CRM/ERP y validación temporal, calibrar umbrales según la capacidad del equipo, medir impacto con grupo de control, y operar con roles, base persistente, integración CRM y monitoreo de deriva. Ver [docs/USO_EMPRESARIAL.md](docs/USO_EMPRESARIAL.md).
 
 ## Estructura
 
 ```text
-backend/      API, esquemas, red, agentes, proveedor LLM, almacenamiento
-frontend/     Interfaz responsiva sin CDN ni proceso de compilación
-models/       Pesos, escalador y evaluación medidos
-data/         Demo, plantilla y diagnóstico sintéticos
-scripts/      Inicio, exportación/evaluación, entrenamiento y evidencias
-tests/        Pruebas de integración, seguridad y agentes
-docs/         Auditoría, arquitectura, requisitos y despliegue
-evidence/     Pruebas, traza, medidas y capturas LOCALES
-original/     Referencias originales preservadas
-runtime/      Base de datos local y temporales; excluidos de Git
+backend/   API FastAPI, red neuronal, analítica de cartera, 4 agentes, proveedores LLM, almacenamiento
+frontend/  index.html, app.css, app.js (vistas), core.js (utilidades puras testeadas)
+models/    Pesos, escalador y evaluación
+data/      Datos sintéticos de demo y plantilla
+tests/     Pruebas Python y JS
+docs/      Arquitectura, auditoría, requisitos, despliegue y uso empresarial
 ```
-
-El notebook original se conserva localmente y se excluye de publicación automática porque contiene metadatos de Colab y salidas históricas. `original/notebook-source.py` conserva el código para revisión; `scripts/train.py` ofrece el procedimiento reproducible sin sus salidas. No se afirma autoría de entrenamiento del equipo: el equipo debe confirmar ese dato.
-
-## Documentos y límites pendientes
-
-- [Auditoría técnica](docs/AUDITORIA.md)
-- [Arquitectura, agentes y seguridad](docs/ARQUITECTURA.md)
-- [Requisitos y aceptación](docs/REQUISITOS.md)
-- [Guía Render y costos](docs/DESPLIEGUE.md)
-- [Evidencias y pruebas](docs/EVIDENCIAS.md)
-
-Pendientes técnicos: validación con datos empresariales, almacenamiento durable y comprobación desde otro dispositivo. Groq cuenta con evidencia pública de respuestas válidas; el adaptador Gemini no tiene una generación exitosa acreditada.
-
-
-## Recorrido para el profesor
-
-En Inicio, **Iniciar recorrido con Gemini** ejecuta tres casos ficticios sin clave de acceso. Muestra la llamada real, estado, intentos, duración, uso informado y respuesta validada; los fallos se distinguen de la generación exitosa. Se puede recorrer cada agente y simular una decisión solo en la pestaña. La demo de 300 sigue disponible sin proveedor. Detalles y límites en [RECORRIDO_PROFESOR.md](docs/RECORRIDO_PROFESOR.md).
-
-`POST /api/demo/gemini` solo admite fixtures internos: sin cuerpo ni parámetros, caché explícito de diez minutos, una ejecución concurrente y hasta cinco nuevas demostraciones diarias con LLM (máximo dos intentos cada una), sujeto además al presupuesto global y a la persistencia del almacenamiento. Datos propios e historiales siguen requiriendo autorización. 37 pruebas pasan; las pruebas reales recientes de Google siguen sin acreditar una generación exitosa.
-
-
-
-## Experiencia de trabajo y calidad de datos
-
-Inicio ofrece análisis individual o carga de cartera. Al elegir un CSV, `/api/public/validate-csv` valida todas las filas y devuelve cinco registros de vista previa sin inferencia, LLM ni persistencia. El análisis sigue usando el contrato validado completo. La interfaz evita envíos duplicados mientras hay una operación en curso.
-
-Diagnóstico resume niveles de riesgo y permite filtrar. Recomendaciones muestra, por cliente, entrada, herramienta, salida, cobertura LLM y mensajes reales de cada agente. Aceptación conserva control humano y excluye observaciones del Supervisor de la aceptación masiva. La versión visible muestra resultados completados, no progreso ni razonamiento inventados.
-
-Para un piloto empresarial faltan datos históricos reales con una definición y horizonte de abandono, evaluación temporal y calibración, identidad individual de revisores, almacenamiento durable e integración autorizada de tareas. El sistema actual no acredita reducción de churn ni pérdidas monetarias previstas.

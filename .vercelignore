@@ -1,0 +1,14 @@
+.venv
+.claude
+runtime
+evidence
+original
+tests
+scripts
+docs
+data/diagnostic_synthetic.csv
+Dockerfile
+compose.yaml
+render.yaml
+requirements-*.txt
+*.db

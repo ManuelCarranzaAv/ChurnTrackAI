@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');
-const {actionPackage,planCsv}=require('../frontend/actions.js');
+const {actionPackage,planCsv}=require('../frontend/core.js');
 const run={demo:true,predictions:[{cliente_id:'A',risk:'ALTO'},{cliente_id:'B',risk:'BAJO'}],recommendations:[{cliente_id:'A',action:'contact',owner:'=HYPERLINK("x")',steps:['Verificar; "dato"'],decision:'pending',source:'rules'},{cliente_id:'B',action:'monitor',steps:[],decision:'approved',source:'rules'}]};
 const contact=actionPackage(run,'A',{contact:['Contacto preventivo']});
 assert.equal(contact.execution,'Propuesta; no ejecutada');
@@ -11,3 +11,17 @@ assert.match(planCsv(run),/"'=HYPERLINK/);
 assert.match(planCsv(run),/Verificar; ""dato""/);
 assert.throws(()=>actionPackage(run,'missing'));
 console.log('8 comprobaciones de documentos y CSV correctas');
+// Bulk acceptance (formerly clarity.cjs) and customer filtering.
+const {approvePendingLocal,filterCustomers}=require('../frontend/core.js');
+const temp={ephemeral:true,status:'completed',recommendations:[{decision:'pending'},{decision:'rejected'},{decision:'approved'},{decision:'pending',supervisor_review:{action:'request_review'}}]};
+assert.equal(approvePendingLocal(temp),1);
+assert.deepEqual(temp.recommendations.map(x=>x.decision),['approved','rejected','approved','pending']);
+assert.equal(approvePendingLocal(temp),0);
+assert.throws(()=>approvePendingLocal({...temp,ephemeral:false}));
+assert.throws(()=>approvePendingLocal({...temp,status:'failed'}));
+const book={predictions:[{cliente_id:'A1',risk:'ALTO',probability:.9,revenue_at_risk:10,monthly_revenue:11,health_score:10,quadrant:'automatizar'},{cliente_id:'B2',risk:'MEDIO',probability:.5,revenue_at_risk:500,monthly_revenue:1000,health_score:50,quadrant:'rescatar'}],recommendations:[]};
+assert.deepEqual(filterCustomers(book).map(p=>p.cliente_id),['B2','A1']);
+assert.deepEqual(filterCustomers(book,{sort:'probability'}).map(p=>p.cliente_id),['A1','B2']);
+assert.deepEqual(filterCustomers(book,{query:'a1'}).map(p=>p.cliente_id),['A1']);
+assert.deepEqual(filterCustomers(book,{quadrant:'rescatar'}).map(p=>p.cliente_id),['B2']);
+console.log('9 comprobaciones de aprobación y filtrado correctas');

@@ -277,10 +277,14 @@ def test_public_gemini_limit_falls_back_without_provider_call(client,monkeypatch
 def test_public_gemini_failure_reports_attempts_not_generation(client,monkeypatch):
     provider=client.app.state.supervisor.retention.provider;provider.key='test-double'
     async def fail(payload,stage='retencion'): raise ProviderError('HTTP_503_PROVIDER_REJECTED')
+    async def fail_narrate(facts): raise ProviderError('HTTP_503_PROVIDER_REJECTED')
     monkeypatch.setattr(provider,'choose',fail)
+    monkeypatch.setattr(provider,'narrate',fail_narrate)
     run=client.post('/api/demo/gemini').json()
     assert run['status']=='completed' and run['mode']=='rules'
-    assert run['llm_report']['status']=='failed' and len(run['llm_report']['attempts'])==4
+    # predictivo + 2 retención + supervisor + estratega
+    assert run['llm_report']['status']=='failed' and len(run['llm_report']['attempts'])==5
+    assert run['executive']['source']=='rules'
     assert run['llm_report']['selected_customers']==0 and run['usage']==[]
     assert not any(m['tool']=='validated_json' for m in run['trace'])
 

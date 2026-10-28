@@ -1,17 +1,40 @@
-# Arquitectura actual
+# Arquitectura (v2)
 
-Frontend HTML/CSS/JS → FastAPI → Supervisor → Predictivo → Retención → Supervisor → revisión humana.
+```text
+Navegador (HTML/CSS/JS)
+   │  JSON / CSV
+   ▼
+FastAPI ── límites de tamaño, frecuencia, CSP
+   │
+   ▼
+Supervisor ──► Predictivo ──► (LLM: interpret_risk/review_data)
+   │               red 6-32-16-8-1 + sustitución a la media
+   ├──────────► Retención ──► simulador what-if (red) ──► (LLM: acción del playbook)
+   │               plan con responsable, plazo y verificación
+   ├── valida: cliente, acción permitida, evidencia, plan, simulación recalculada
+   ├── (LLM: approve_plan/request_review)
+   ├──────────► Estratega ──► agregados de cartera ──► (LLM: resumen) ──► verificación de cifras
+   ▼
+Informe + traza ──► revisión humana (aceptar / rechazar / exportar)
+```
 
-- Predictivo ejecuta la red neuronal y sensibilidad por sustitución a la media. Su consulta LLM interpreta indicadores; no modifica probabilidades.
-- Retención recibe también la interpretación previa y selecciona una acción/evidencia del catálogo. El plan se construye con plantillas verificables.
-- Supervisor comprueba correspondencia, acciones, evidencia y planes, permite una reparación y consulta al LLM sobre consistencia. Puede señalar revisión adicional.
-- Un proveedor configurable (Groq o Gemini), tres roles y tres etapas; no son tres modelos distintos.
-- Salida estructurada restringida por etapa: acciones y claves de evidencia enumeradas. Validación posterior contra cada cliente.
-- SharedState y mensajes Pydantic conservan origen, índices, herramientas, errores, consumo y estado. Máximo 32 mensajes y 60 segundos.
-- Hasta 20 clientes priorizados con LLM; los 300 se procesan con red y recomendaciones. Cada etapa declara su cobertura real.
-- Público: /api/public/analyze y /api/public/analyze-csv admiten LLM con consentimiento, sin persistencia SQL ni clave administrativa. Límites públicos y globales de proveedor.
-- Privado: /api/analyze, historial y decisiones persistidas requieren APP_API_KEY. SQLAlchemy con SQLite, PostgreSQL configurable.
-- Aceptar todas excluye request_review y no cambia decisiones ya tomadas. Aceptación individual conserva control humano. Ninguna aceptación ejecuta acciones externas.
-- No RAG, memoria vectorial, CRM ni envío de correo. Sin identidad individual de revisor.
+## Componentes
 
-Detalles de contratos, límites, pruebas y evidencia real en README.md y evidence/. El registro visible de los agentes representa la ejecución completada; no es streaming en vivo.
+- **Red neuronal** (`backend/model.py`): inferencia fiel de los pesos exportados, factores por sustitución a la media, ingreso mensual, ingreso en riesgo, salud y método `what_if`.
+- **Analítica de cartera** (`backend/analytics.py`): segmentos de riesgo, histograma, sensibilidad media, prioridades por ingreso en riesgo, concentración del riesgo (top 20 %), matriz valor × riesgo con umbral en la mediana de ingreso.
+- **Agentes** (`backend/agents.py`):
+  - *Supervisor*: delega, valida, solicita una corrección si la salida es inconsistente y vuelve a calcular cada simulación antes de aceptar la recomendación.
+  - *Predictivo*: ejecuta la red y, con LLM, emite una interpretación restringida.
+  - *Retención*: palancas medibles (`claims`→reclamos=0, `payments`→pagos=0, `reactivate`→15 días). Con reglas elige la palanca de mayor reducción modelada (≥5 pp); con LLM recibe `action_impacts` y elige dentro de las acciones permitidas.
+  - *Estratega*: construye hechos verificados y un resumen por reglas; con LLM redacta el resumen y se rechaza si contiene números ausentes en los hechos. Al proveedor no se envían códigos de cliente.
+- **Proveedores** (`backend/llm.py`): Groq (chat/completions con `json_schema` estricto) y Gemini (`responseJsonSchema`). Mismo método `generate` para selección y redacción.
+- **Almacenamiento** (`backend/storage.py`): SQLAlchemy con SQLite o PostgreSQL; cuotas diarias y decisiones inmutables.
+
+## Garantías y límites
+
+- El riesgo siempre procede de la red; el LLM no lo modifica.
+- Un proveedor, cuatro roles: no son cuatro modelos distintos.
+- Hasta 20 clientes priorizados reciben revisión LLM; el resto, reglas explícitas. Cada etapa declara su cobertura real.
+- La simulación es sensibilidad del modelo, no efecto causal.
+- No hay CRM, correo ni acciones externas; la aceptación es humana. Sin identidad individual de revisores en el modo público.
+- La traza visible es la ejecución completada, no streaming en vivo.

@@ -17,6 +17,12 @@ class ThreeStageProvider:
         if stage=='supervisor':
             assert all('proposal' in p for p in payload)
         return self.result(payload,stage),{'total_tokens':10}
+    async def narrate(self,facts):
+        self.calls.append('estratega')
+        if self.invalid:
+            return {'headline':'Riesgo de 999.999 soles inventados','findings':['a','b'],'actions':['c','d']},{'total_tokens':10}
+        return {'headline':f"{facts['ingreso_mensual_en_riesgo']} en riesgo",'findings':[f"{facts['clientes']} clientes analizados.",'Revisar prioridades.'],
+                'actions':['Contactar a los prioritarios.','Validar datos.']},{'total_tokens':10}
     def result(self,payload,stage='retencion'):
         return LLMResponse(choices=[{'index':999 if self.invalid and stage=='supervisor' else p['index'],
             'action':'request_review' if self.flag and stage=='supervisor' else p['allowed_actions'][0],
@@ -25,13 +31,14 @@ class ThreeStageProvider:
 def test_three_real_stages_orchestrated_with_double(client):
     provider=ThreeStageProvider();client.app.state.supervisor.retention.provider=provider
     run=client.post('/api/public/analyze',json={'customers':[ROW],'use_llm':True,'consent_external_processing':True}).json()
-    assert provider.calls==['predictivo','retencion','supervisor']
+    assert provider.calls==['predictivo','retencion','supervisor','estratega']
     assert run['status']=='completed' and run['ephemeral'] and not run['demo']
     assert all(r['status']=='validated' for r in run['agent_llm'].values())
-    assert len(run['llm_report']['attempts'])==3
+    assert len(run['llm_report']['attempts'])==4
+    assert run['executive']['source']=='llm' and run['agent_report']['strategist']['llm_status']=='validated'
     assert run['predictions'][0]['llm_interpretation']['action']=='interpret_risk'
     assert run['recommendations'][0]['supervisor_review']['action']=='approve_plan'
-    assert sum(u['total_tokens'] for u in run['usage'])==30
+    assert sum(u['total_tokens'] for u in run['usage'])==40
     assert client.get('/api/runs/'+run['id'],headers=AUTH).status_code==404
 
 def test_supervisor_observation_excluded_from_bulk(client):
@@ -48,6 +55,8 @@ def test_invalid_supervisor_response_is_not_claimed_valid(client):
     assert run['status']=='completed' and run['agent_llm']['supervisor']['status']=='failed'
     assert run['agent_llm']['retencion']['status']=='validated'
     assert 'supervisor_review' not in run['recommendations'][0]
+    # Invented figures in the executive summary are rejected and replaced by the rule-based brief.
+    assert run['agent_llm']['estratega']['status']=='failed' and run['executive']['source']=='rules'
 
 def test_public_custom_budget_prevents_all_llm_calls(client):
     provider=ThreeStageProvider();client.app.state.supervisor.retention.provider=provider

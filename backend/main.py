@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
-from .agents import SupervisorAgent, ACTIONS
+from .agents import SupervisorAgent, ACTIONS, LEVERS, allowed, simulate
 from .model import NeuralModel, ROOT
 from .schemas import AnalysisRequest, Customer, Decision, FEATURES
 from .storage import Store
@@ -23,6 +23,8 @@ from .llm import configured_provider, ProviderError, explain_error
 
 load_dotenv(ROOT / '.env')
 MAX_BODY = 256_000
+# Serverless hosts (Vercel) only allow writes under /tmp; that storage is per-instance and temporary.
+RUNTIME = Path(os.getenv('RUNTIME_DIR') or ('/tmp/churntrackai' if os.getenv('VERCEL') else ROOT / 'runtime'))
 
 class BodyLimit:
     def __init__(self, app):
@@ -51,14 +53,15 @@ class BodyLimit:
         await self.app(scope,replay,send)
 
 def create_app(db_url=None):
-    Path(ROOT / 'runtime').mkdir(exist_ok=True)
-    store = Store(db_url or os.getenv('DATABASE_URL',f'sqlite:///{ROOT / "runtime/churn.db"}'))
+    RUNTIME.mkdir(parents=True, exist_ok=True)
+    store = Store(db_url or os.getenv('DATABASE_URL') or f'sqlite:///{(RUNTIME / "churn.db").as_posix()}')
     model = NeuralModel()
     supervisor = SupervisorAgent(model,configured_provider(),store)
-    app = FastAPI(title='ChurnTrackAI',version='1.0.0',docs_url=None,redoc_url=None,openapi_url=None)
+    app = FastAPI(title='ChurnTrackAI',version='2.0.0',docs_url=None,redoc_url=None,openapi_url=None)
     app.add_middleware(BodyLimit)
     app.state.store, app.state.supervisor = store, supervisor
     app.state.calls = []
+    app.state.simulations = []
     app.state.slots = asyncio.Semaphore(2)
     app.state.professor_lock = asyncio.Lock()
     app.state.professor_cache = None
@@ -71,7 +74,14 @@ def create_app(db_url=None):
 
     @app.middleware('http')
     async def security(request,call_next):
-        if request.method == 'POST':
+        if request.method == 'POST' and request.url.path == '/api/public/simulate':
+            # Pure in-memory inference (no LLM, no storage): separate, higher limit for interactive sliders.
+            now = time.monotonic()
+            app.state.simulations = [t for t in app.state.simulations if now-t < 60]
+            if len(app.state.simulations) >= 240:
+                return JSONResponse({'detail':'Demasiadas simulaciones. Espera un momento.'},429)
+            app.state.simulations.append(now)
+        elif request.method == 'POST':
             now = time.monotonic()
             app.state.calls = [t for t in app.state.calls if now-t < 60]
             if len(app.state.calls) >= 30:
@@ -91,13 +101,14 @@ def create_app(db_url=None):
             with store.engine.connect() as db:
                 from sqlalchemy import text
                 db.execute(text('SELECT 1'))
-            return {'status':'ok','model':'loaded','database':'ok','version':'1.0.0'}
+            return {'status':'ok','model':'loaded','database':'ok','version':'2.0.0'}
         except Exception:
             return JSONResponse({'status':'degraded','database':'unavailable'},503)
 
     @app.get('/api/config')
     def config():
-        return {'llm_provider':getattr(supervisor.retention.provider,'name','unknown'),'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':20,'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
+        return {'agents':['supervisor','predictivo','retencion','estratega'],'hosting':'vercel' if os.getenv('VERCEL') else 'render' if os.getenv('RENDER') else 'local',
+                'llm_provider':getattr(supervisor.retention.provider,'name','unknown'),'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':20,'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER') or os.getenv('VERCEL')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
 
     @app.get('/api/metrics')
     def metrics():
@@ -169,6 +180,14 @@ def create_app(db_url=None):
                 result['warnings'].append('La prueba pública del LLM no está disponible: falta configuración o se alcanzó el límite de cinco demostraciones nuevas por día. Puedes recorrer los agentes con reglas.')
             app.state.professor_cache = (time.monotonic(),copy.deepcopy(result))
             return result
+
+    @app.post('/api/public/simulate')
+    def simulate_customer(customer:Customer):
+        # What-if sandbox: same network and levers the retention agent uses; nothing is stored or sent out.
+        p = model.predict(customer)
+        return {'prediction':p.model_dump(),
+                'levers':{action:simulate(model,p,action) for action in LEVERS},
+                'allowed_actions':allowed(p)}
 
     @app.post('/api/public/analyze')
     async def public_analyze(payload:AnalysisRequest):

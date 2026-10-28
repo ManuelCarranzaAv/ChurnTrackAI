@@ -46,4 +46,11 @@ class NeuralModel:
             replaced[i] = self.data['mean'][i]
             factors.append(Factor(feature=feature, value=values[i], delta_probability=p-self.probability(replaced)))
         warnings = [f'{f}: fuera del rango sintético del notebook [{lo}, {hi}]' for f,v,(lo,hi) in zip(FEATURES, values, RANGES) if not lo <= v <= hi]
-        return Prediction(cliente_id=customer.cliente_id, probability=p, risk='ALTO' if p >= .7 else 'MEDIO' if p >= .4 else 'BAJO', factors=sorted(factors, key=lambda f: abs(f.delta_probability), reverse=True), warnings=warnings, observed=dict(zip(FEATURES, values)))
+        revenue = customer.compras_mensuales*customer.monto_promedio
+        return Prediction(cliente_id=customer.cliente_id, probability=p, risk='ALTO' if p >= .7 else 'MEDIO' if p >= .4 else 'BAJO', factors=sorted(factors, key=lambda f: abs(f.delta_probability), reverse=True), warnings=warnings, observed=dict(zip(FEATURES, values)),
+                          monthly_revenue=revenue, revenue_at_risk=p*revenue, health_score=round(100*(1-p)))
+
+    def what_if(self, observed, changes):
+        """Model response when some indicators change; a sensitivity, not a causal effect."""
+        values = [changes.get(f, observed[f]) for f in FEATURES]
+        return self.probability(values)

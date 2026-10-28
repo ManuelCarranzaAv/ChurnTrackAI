@@ -48,6 +48,9 @@ class Prediction(StrictModel):
     factors: list[Factor]
     warnings: list[str]
     observed: dict[str, float]
+    monthly_revenue: float = 0
+    revenue_at_risk: float = 0
+    health_score: int = 0
 
 class Recommendation(StrictModel):
     cliente_id: str
@@ -60,6 +63,7 @@ class Recommendation(StrictModel):
     timeframe: str = ''
     steps: list[str] = Field(default_factory=list)
     success_check: str = ''
+    simulation: dict | None = None
     decision: Literal['pending', 'approved', 'rejected'] = 'pending'
 
 class Message(StrictModel):
@@ -81,3 +85,8 @@ class LLMChoice(StrictModel):
 
 class LLMResponse(StrictModel):
     choices: list[LLMChoice] = Field(min_length=1, max_length=20)
+
+class ExecutiveSummary(StrictModel):
+    headline: str = Field(min_length=10, max_length=180)
+    findings: list[str] = Field(min_length=2, max_length=4)
+    actions: list[str] = Field(min_length=2, max_length=4)

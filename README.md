@@ -83,7 +83,7 @@ CSV: `cliente_id,antiguedad,compras_mensuales,monto_promedio,reclamos,dias_ultim
 
 ```powershell
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python -m pytest -q        # 78 pruebas: modelo, API, seguridad, 4 agentes, análisis de negocio
+.\.venv\Scripts\python -m pytest -q        # 82 pruebas: modelo, API, seguridad, 4 agentes, análisis de negocio
 node tests/actions.cjs                     # utilidades del frontend
 ```
 

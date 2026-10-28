@@ -102,8 +102,51 @@ def test_groq_single_429_never_retries_or_exposes_provider_body(monkeypatch):
     monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:real_client(transport=httpx.MockTransport(respond),**kwargs))
     with pytest.raises(ProviderError,match='HTTP_429_PROVIDER_REJECTED') as caught:
         asyncio.run(GroqProvider().choose(rows(1)))
-    assert len(calls)==1
+    # A long rate-limit wait is never attempted: one call per model (primary, then fallback), then a safe failure.
+    assert [json.loads(c.content)['model'] for c in calls]==['openai/gpt-oss-120b','openai/gpt-oss-20b']
     assert 'PRIVATE' not in str(caught.value)
+
+
+def test_groq_rate_limit_switches_to_fallback_model(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY','test-placeholder')
+    real_client=httpx.AsyncClient
+    calls=[]
+    def respond(request):
+        model=json.loads(request.content)['model'];calls.append(model)
+        if model=='openai/gpt-oss-120b':
+            return httpx.Response(429,headers={'retry-after':'30'},json={'error':'rate'})
+        return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps({'choices':[{'index':0,'action':'monitor','evidence':['probability'],'reason':''}]})}}],'usage':{'total_tokens':5}})
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:real_client(transport=httpx.MockTransport(respond),**kwargs))
+    parsed,usage=asyncio.run(GroqProvider().choose(rows(1)))
+    assert calls==['openai/gpt-oss-120b','openai/gpt-oss-20b']
+    assert usage['model']=='openai/gpt-oss-20b' and usage['fallback'] and parsed.choices[0].action=='monitor'
+
+
+def test_groq_server_error_or_timeout_uses_fallback(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY','test-placeholder')
+    real_client=httpx.AsyncClient
+    calls=[]
+    def respond(request):
+        model=json.loads(request.content)['model'];calls.append(model)
+        if model=='openai/gpt-oss-120b':
+            raise httpx.ReadTimeout('slow',request=request)
+        return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps({'choices':[{'index':0,'action':'monitor','evidence':['probability'],'reason':''}]})}}],'usage':{'total_tokens':5}})
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:real_client(transport=httpx.MockTransport(respond),**kwargs))
+    _,usage=asyncio.run(GroqProvider().choose(rows(1)))
+    assert calls==['openai/gpt-oss-120b','openai/gpt-oss-20b'] and usage['fallback']
+
+
+def test_groq_request_states_required_indices(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY','test-placeholder')
+    real_client=httpx.AsyncClient
+    sent=[]
+    def respond(request):
+        sent.append(json.loads(request.content))
+        return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps({'choices':[{'index':i,'action':'monitor','evidence':['probability'],'reason':''} for i in range(3)]})}}],'usage':{'total_tokens':5}})
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:real_client(transport=httpx.MockTransport(respond),**kwargs))
+    asyncio.run(GroqProvider().choose(rows(3)))
+    data=json.loads(sent[0]['messages'][1]['content'])
+    assert data['indices_requeridos']==[0,1,2] and 'indices_requeridos' in sent[0]['messages'][0]['content']
 
 
 def test_groq_stage_request_is_compact_bounded_and_low_reasoning(monkeypatch):

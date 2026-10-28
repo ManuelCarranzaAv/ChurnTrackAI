@@ -6,7 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt && useradd --uid 10001 --crea
 COPY backend ./backend
 COPY frontend ./frontend
 COPY models/network.json models/evaluation.json ./models/
-COPY data/demo.json data/demo-24.csv data/template.csv data/example-300.csv ./data/
+COPY data/demo.json data/demo-10.csv data/demo-24.csv data/template.csv data/example-300.csv ./data/
 RUN mkdir -p /app/runtime && chown -R app:app /app
 USER app
 EXPOSE 8000

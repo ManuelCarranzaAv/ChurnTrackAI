@@ -52,23 +52,24 @@
  // Plain-language narration of one trace message (live or replayed). Only states what the brief contains.
  function narrate(m){
   const b=m.brief||{},err=b.error;
-  if(err&&m.sender==='llm')return `La respuesta del LLM no se aceptó (${err}). ${m.status==='retry'?'Reintento.':'El agente continúa con reglas explícitas.'}`;
+  if(err&&m.sender==='llm')return `La respuesta del LLM no se aceptó (${err}). ${m.status==='retry'?'El agente la vuelve a pedir.':'El agente continúa con reglas explícitas; el análisis no se interrumpe.'}`;
+ const rest=b.deterministic_only?` ${plural(b.deterministic_only,'cliente queda','clientes quedan')} con reglas.`:'';
   switch(m.tool){
    case 'analysis_request':return `Solicito analizar ${plural(b.customer_count,'cliente','clientes')} ${b.requested_llm?'con revisión LLM':'sin LLM'}.`;
    case 'delegate_prediction':return 'Delego al Predictivo: validar los datos, calcular el riesgo y explicar sus factores.';
    case 'neural_inference_and_mean_ablation':return `Calculé el riesgo con la red neuronal: ${b.high} alto, ${b.medium} medio, ${b.low} bajo${b.out_of_domain?`. ${plural(b.out_of_domain,'registro queda','registros quedan')} fuera del dominio del modelo`:''}.`;
    case 'predictivo_llm_request':return `Envío ${plural(b.customers,'perfil','perfiles')} sin código de cliente al LLM para interpretar el riesgo.`;
-   case 'predictivo_llm_result':return `Interpretación validada para ${plural(b.choices,'cliente','clientes')}${b.actions?.review_data?` (${b.actions.review_data} con datos a revisar)`:''}.`;
+   case 'predictivo_llm_result':return `Interpretación validada para ${plural(b.choices,'cliente','clientes')}${b.actions?.review_data?` (${b.actions.review_data} con datos a revisar)`:''}.${rest}`;
    case 'delegate_retention':return 'Delego a Retención: elegir una acción sustentada para cada cliente.';
    case 'structured_selection_request':return `Pido al LLM elegir la acción de ${plural(b.customers,'cliente','clientes')}, con el impacto simulado de cada palanca como evidencia.`;
-   case 'validated_json':return `Selección validada: ${actionList(b.actions)}.`;
+   case 'validated_json':return `Selección validada: ${actionList(b.actions)}.${rest}`;
    case 'provider_call':return `La llamada al LLM falló (${b.error||'error'}).`;
    case 'llm_unavailable':return 'El LLM no está configurado: aplico reglas explícitas.';
    case 'daily_budget':return 'Se agotó el presupuesto diario del LLM: aplico reglas explícitas.';
    case 'recommendations':return `${b.correction?'Corrección entregada: ':''}${plural(b.customers,'plan propuesto','planes propuestos')} — ${actionList(b.actions)}.`;
    case 'request_correction':return 'Encontré propuestas inconsistentes: pido a Retención rehacerlas con reglas.';
    case 'supervisor_llm_request':return `Pido al LLM una segunda revisión de ${plural(b.customers,'propuesta','propuestas')}.`;
-   case 'supervisor_llm_result':return `Revisión validada: ${review(b.actions)}.`;
+   case 'supervisor_llm_result':return `Revisión validada: ${review(b.actions)}.${rest}`;
    case 'delegate_executive_summary':return 'Delego al Estratega el resumen para gerencia.';
    case 'executive_summary_request':return `Envío ${plural(b.facts,'hecho verificado','hechos verificados')} al LLM, sin códigos de cliente.`;
    case 'executive_summary_result':return b.validated?'Borrador aceptado: todas sus cifras existen en los datos verificados.':'Borrador rechazado.';

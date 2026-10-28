@@ -115,7 +115,7 @@ def brief(tool, payload):
     if 'input' in payload:
         return {'customers':len(payload['input']),'identifiers_removed':payload.get('identifiers_removed',False)}
     if 'choices' in payload:
-        return {'choices':len(payload['choices']),'actions':dict(Counter(c['action'] for c in payload['choices']))}
+        return {'choices':len(payload['choices']),'actions':dict(Counter(c['action'] for c in payload['choices'])),'deterministic_only':payload.get('deterministic_only',0)}
     if 'facts' in payload:
         return {'facts':len(payload['facts'].get('hechos_verificados',payload['facts']))}
     return {k:v for k,v in payload.items() if isinstance(v,(str,int,float,bool))}
@@ -153,6 +153,37 @@ def checked_reason(reason, p, model=None):
             return ''
     return reason
 
+async def guarded(call):
+    """Any unexpected provider failure becomes a ProviderError, so the agent falls back instead of stopping the run."""
+    try:
+        return await call
+    except (ProviderError, asyncio.CancelledError):
+        raise
+    except Exception as exc:
+        raise ProviderError('UNEXPECTED_'+type(exc).__name__) from None
+
+def accepted_choices(choices, expected, predictions, allowed_for, partial=False):
+    """Validate an LLM answer against the customers it was asked about.
+
+    First attempt: all or nothing, so a malformed answer is retried. Second attempt: keep the
+    valid choices and leave the rest to deterministic rules, instead of losing the whole stage.
+    """
+    valid, seen = [], set()
+    for c in choices:
+        ok = c.index in expected and c.index not in seen
+        if ok:
+            p = predictions[c.index]
+            ok = c.action in allowed_for(c) and set(c.evidence).issubset({*p.observed,'probability'})
+        if not ok:
+            if partial:
+                continue
+            raise ProviderError('UNSUPPORTED_RECOMMENDATION' if c.index in expected else 'INCOMPLETE_CHOICES')
+        seen.add(c.index)
+        valid.append(c)
+    if not valid or (not partial and seen != set(expected)):
+        raise ProviderError('INCOMPLETE_CHOICES')
+    return valid
+
 def llm_batch():
     # Free LLM tiers allow ~8k tokens per minute; 10 customers with justifications fit one analysis.
     return max(1, min(20, int(os.getenv('LLM_MAX_CUSTOMERS', '10'))))
@@ -184,18 +215,15 @@ async def review_stage(stage, request, state, provider, store, model=None):
     for attempt in (1, 2):
         start = time.perf_counter()
         try:
-            response, usage = await provider.review(payload,stage)
+            response, usage = await guarded(provider.review(payload,stage))
             response = LLMResponse.model_validate(response.model_dump())
             state.usage.append({**usage,'agent':stage})
-            if sorted(c.index for c in response.choices)!=sorted(indices):
-                raise ProviderError('INCOMPLETE_CHOICES')
-            for c in response.choices:
-                if c.action not in by_index[c.index]['allowed_actions'] or not set(c.evidence).issubset({*state.predictions[c.index].observed,'probability'}):
-                    raise ProviderError('UNSUPPORTED_RECOMMENDATION')
-            choices = [{**c.model_dump(),'reason':checked_reason(c.reason,state.predictions[c.index],model)} for c in response.choices]
-            report.update(status='validated',checked_indices=indices,choices=choices,usage=usage)
-            state.send('llm',stage,stage+'_llm_result',response.model_dump())
-            state.llm_attempts.append({'agent':stage,'attempt':attempt,'status':'validated','elapsed_ms':round((time.perf_counter()-start)*1000,2)})
+            valid = accepted_choices(response.choices, by_index, state.predictions, lambda c: by_index[c.index]['allowed_actions'], partial=attempt == 2)
+            choices = [{**c.model_dump(),'reason':checked_reason(c.reason,state.predictions[c.index],model)} for c in valid]
+            kept = [c['index'] for c in choices]
+            report.update(status='validated',checked_indices=kept,choices=choices,usage=usage,deterministic_only=len(indices)-len(kept))
+            state.send('llm',stage,stage+'_llm_result',{'choices':[c.model_dump() for c in valid],'deterministic_only':len(indices)-len(kept)})
+            state.llm_attempts.append({'agent':stage,'attempt':attempt,'status':'validated','model':usage.get('model'),'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
             if stage=='supervisor' and any(c.action=='request_review' for c in response.choices):
                 state.warnings.append('El supervisor LLM solicita revisión humana adicional para algunas propuestas; consulta sus observaciones antes de aceptar.')
             return
@@ -254,19 +282,15 @@ class RetentionAgent:
                     break
                 try:
                     attempt_start = time.perf_counter()
-                    response, usage = await self.provider.choose(payload)
+                    response, usage = await guarded(self.provider.choose(payload))
                     response = LLMResponse.model_validate(response.model_dump())
                     state.usage.append({**usage,'agent':'retencion'})
-                    ids = [c.index for c in response.choices]
-                    if sorted(ids) != sorted(candidates):
-                        raise ProviderError('INCOMPLETE_CHOICES')
-                    selections = {c.index:c for c in response.choices}
-                    for i, choice in selections.items():
-                        p = state.predictions[i]
-                        if choice.action not in allowed(p) or not set(choice.evidence).issubset({*p.observed,'probability'}) or not set(ACTIONS[choice.action][1]).issubset(choice.evidence):
-                            raise ProviderError('UNSUPPORTED_RECOMMENDATION')
-                    state.send('llm','retencion','validated_json',response.model_dump())
-                    state.llm_attempts.append({'agent':'retencion','attempt':attempt+1,'status':'validated','elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
+                    # Evidence must include the indicator the action acts on (e.g. claims needs reclamos).
+                    grounded = lambda c: allowed(state.predictions[c.index]) if set(ACTIONS.get(c.action,('',['?']))[1]).issubset(c.evidence) else []
+                    valid = accepted_choices(response.choices, set(candidates), state.predictions, grounded, partial=attempt == 1)
+                    selections = {c.index:c for c in valid}
+                    state.send('llm','retencion','validated_json',{'choices':[c.model_dump() for c in valid],'deterministic_only':len(candidates)-len(valid)})
+                    state.llm_attempts.append({'agent':'retencion','attempt':attempt+1,'status':'validated','model':usage.get('model'),'elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
                     state.mode = 'mixed' if len(state.predictions) > llm_batch() else 'llm'
                     break
                 except ProviderError as exc:
@@ -472,23 +496,28 @@ class StrategistAgent:
                 # Self-describing sentences: each figure travels with its meaning, so it is not re-labelled.
                 shared = {'hechos_verificados': fact_sentences(facts)}
                 state.send('estratega','llm','executive_summary_request',{'facts':shared,'identifiers_removed':True})
-                start = time.perf_counter()
-                try:
-                    result, usage = await provider.narrate(shared)
-                    draft = ExecutiveSummary.model_validate(result).model_dump()
-                    if unsupported_numbers(draft, shared):
-                        raise ProviderError('UNVERIFIED_NUMBERS')
-                    # The headline stays deterministic: it is the figure managers read first.
-                    summary = {**draft, 'headline': rule_summary(facts)['headline'], 'source': 'llm', 'facts': facts}
-                    state.usage.append({**usage,'agent':'estratega'})
-                    report.update(status='validated', usage=usage)
-                    state.send('llm','estratega','executive_summary_result',{'validated':True,'numbers_checked':True})
-                    state.llm_attempts.append({'agent':'estratega','attempt':1,'status':'validated','elapsed_ms':round((time.perf_counter()-start)*1000,2)})
-                except (ProviderError, ValidationError) as exc:
-                    code = str(exc) if isinstance(exc, ProviderError) else 'INVALID_SUMMARY'
-                    report.update(status='failed', reason=explain_error(code))
-                    state.send('llm','estratega','executive_summary_result',{'error':code},'error')
-                    state.llm_attempts.append({'agent':'estratega','attempt':1,'status':'failed','code':code,'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
-                    state.warnings.append('estratega: '+(explain_error(code) if code not in ('UNVERIFIED_NUMBERS','INVALID_SUMMARY') else 'el resumen LLM citó cifras no verificadas')+' Se muestra el resumen por reglas.')
+                for attempt in (1, 2):
+                    start = time.perf_counter()
+                    try:
+                        result, usage = await guarded(provider.narrate(shared))
+                        state.usage.append({**usage,'agent':'estratega'})
+                        draft = ExecutiveSummary.model_validate(result).model_dump()
+                        if unsupported_numbers(draft, shared):
+                            raise ProviderError('UNVERIFIED_NUMBERS')
+                        # The headline stays deterministic: it is the figure managers read first.
+                        summary = {**draft, 'headline': rule_summary(facts)['headline'], 'source': 'llm', 'facts': facts}
+                        report.update(status='validated', usage=usage)
+                        state.send('llm','estratega','executive_summary_result',{'validated':True,'numbers_checked':True})
+                        state.llm_attempts.append({'agent':'estratega','attempt':attempt,'status':'validated','model':usage.get('model'),'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
+                        break
+                    except (ProviderError, ValidationError) as exc:
+                        code = str(exc) if isinstance(exc, ProviderError) else 'INVALID_SUMMARY'
+                        state.llm_attempts.append({'agent':'estratega','attempt':attempt,'status':'failed','code':code,'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
+                        retry = attempt == 1 and not code.startswith('HTTP_') and code != 'LLM_NOT_CONFIGURED' and self.store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50')))
+                        state.send('llm','estratega','executive_summary_result',{'error':code},'retry' if retry else 'error')
+                        if not retry:
+                            report.update(status='failed', reason=explain_error(code))
+                            state.warnings.append('estratega: '+(explain_error(code) if code not in ('UNVERIFIED_NUMBERS','INVALID_SUMMARY') else 'el resumen LLM citó cifras no verificadas')+' Se muestra el resumen por reglas.')
+                            break
         state.executive = summary
         state.send('estratega','supervisor','executive_summary',{'source':summary['source'],'headline':summary['headline']})

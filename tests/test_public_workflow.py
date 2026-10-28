@@ -85,6 +85,7 @@ def _groq_rows():
 
 def test_groq_retries_once_after_short_rate_limit(monkeypatch):
     monkeypatch.setenv('GROQ_API_KEY','unit-test-placeholder')
+    monkeypatch.setenv('GROQ_FALLBACK_MODEL','')
     monkeypatch.setattr(asyncio,'sleep',lambda s:_noop())
     calls=[]
     def respond(request):
@@ -100,6 +101,7 @@ def test_groq_retries_once_after_short_rate_limit(monkeypatch):
 @pytest.mark.parametrize('headers',[{'retry-after':'45'},{}])
 def test_groq_long_or_repeated_rate_limit_fails_safely(monkeypatch,headers):
     monkeypatch.setenv('GROQ_API_KEY','unit-test-placeholder')
+    monkeypatch.setenv('GROQ_FALLBACK_MODEL','')
     monkeypatch.setattr(asyncio,'sleep',lambda s:_noop())
     calls=[]
     def respond(request):

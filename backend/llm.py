@@ -172,6 +172,7 @@ class GeminiProvider:
 
 
 MAX_RETRY_WAIT = 20.0
+SHORT_RETRY_WAIT = 3.0
 
 def retry_delay(response):
     """Seconds to wait before one retry after HTTP 429, or None when the provider asks for too long."""
@@ -189,12 +190,20 @@ class GroqProvider:
     def __init__(self):
         self.key = os.getenv('GROQ_API_KEY', '')
         self.model = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
+        # Groq rate limits are per model: a second model absorbs a token-per-minute peak instead of failing.
+        fallback = os.getenv('GROQ_FALLBACK_MODEL', 'openai/gpt-oss-20b').strip()
+        self.models = [self.model] + ([fallback] if fallback and fallback != self.model else [])
 
     async def review(self, payload, stage):
         return await self.choose(payload,stage)
 
     async def choose(self, payload, stage="retencion"):
-        content, usage = await self.generate(STAGE_PROMPTS.get(stage,SYSTEM_PROMPT), compact_payload(payload), provider_schema(stage), stage+'_choices', min(3072,768+len(payload)*70))
+        data = compact_payload(payload)
+        if isinstance(data, dict):
+            # Stated explicitly so the model does not skip a customer.
+            data['indices_requeridos'] = [row[0] for row in data['rows']]
+        system = STAGE_PROMPTS.get(stage,SYSTEM_PROMPT)+(' Devuelve exactamente una selección por cada valor de indices_requeridos.' if isinstance(data, dict) else '')
+        content, usage = await self.generate(system, data, provider_schema(stage), stage+'_choices', min(3072,768+len(payload)*70))
         try:
             return LLMResponse.model_validate_json(content), usage
         except ValueError:
@@ -210,35 +219,46 @@ class GroqProvider:
     async def generate(self, system, data, schema, name, max_tokens):
         if not self.key:
             raise ProviderError('LLM_NOT_CONFIGURED')
-        body = {'model': self.model, 'temperature': 0.1, 'max_completion_tokens': max_tokens,
-                'messages': [{'role': 'system', 'content': system},
-                             {'role': 'user', 'content': json.dumps(data,separators=(',',':'),ensure_ascii=False)}],
-                'response_format': {'type': 'json_schema', 'json_schema': {
-                    'name': name, 'strict': True, 'schema': schema}}}
-        if self.model.startswith('openai/gpt-oss-'):
-            body['reasoning_effort'] = 'low'
-        try:
-            waited = 0.0
-            async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
-                for attempt in range(2):
-                    response = await client.post('https://api.groq.com/openai/v1/chat/completions',
-                        headers={'Authorization': 'Bearer '+self.key}, json=body)
-                    # Free tiers limit tokens per minute; a short provider-advised pause usually clears it.
-                    delay = retry_delay(response) if response.status_code == 429 and attempt == 0 else None
-                    if delay is None:
-                        break
-                    waited += delay
-                    await asyncio.sleep(delay)
+        messages = [{'role': 'system', 'content': system},
+                    {'role': 'user', 'content': json.dumps(data,separators=(',',':'),ensure_ascii=False)}]
+        waited, error = 0.0, 'HTTP_503_PROVIDER_REJECTED'
+        async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
+            for model in self.models:
+                last = model == self.models[-1]
+                body = {'model': model, 'temperature': 0.1, 'max_completion_tokens': max_tokens, 'messages': messages,
+                        'response_format': {'type': 'json_schema', 'json_schema': {'name': name, 'strict': True, 'schema': schema}}}
+                if model.startswith('openai/gpt-oss-'):
+                    body['reasoning_effort'] = 'low'
+                try:
+                    for attempt in range(2):
+                        response = await client.post('https://api.groq.com/openai/v1/chat/completions',
+                            headers={'Authorization': 'Bearer '+self.key}, json=body)
+                        if response.status_code != 429 or attempt:
+                            break
+                        # A short provider-advised pause is cheaper than switching; a long one is only worth it on the last model.
+                        delay = retry_delay(response)
+                        if delay is None or (delay > SHORT_RETRY_WAIT and not last):
+                            break
+                        waited += delay
+                        await asyncio.sleep(delay)
+                except (httpx.TimeoutException, httpx.TransportError) as exc:
+                    error = type(exc).__name__
+                    continue
+                if response.status_code == 429 or response.status_code >= 500:
+                    error = f'HTTP_{response.status_code}_PROVIDER_REJECTED'
+                    continue
                 if response.is_error:
                     raise ProviderError(f'HTTP_{response.status_code}_PROVIDER_REJECTED')
-                raw = response.json()
-            content = raw['choices'][0]['message']['content']
-            usage = raw.get('usage', {})
-            return content, {'provider': self.name, 'model': self.model, 'rate_limit_wait_s': waited,
-                'input_tokens': usage.get('prompt_tokens'), 'output_tokens': usage.get('completion_tokens'),
-                'total_tokens': usage.get('total_tokens')}
-        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:
-            raise ProviderError(type(exc).__name__) from None
+                try:
+                    raw = response.json()
+                    content = raw['choices'][0]['message']['content']
+                except (ValueError, KeyError, IndexError, TypeError) as exc:
+                    raise ProviderError(type(exc).__name__) from None
+                usage = raw.get('usage', {})
+                return content, {'provider': self.name, 'model': model, 'fallback': model != self.model, 'rate_limit_wait_s': waited,
+                    'input_tokens': usage.get('prompt_tokens'), 'output_tokens': usage.get('completion_tokens'),
+                    'total_tokens': usage.get('total_tokens')}
+        raise ProviderError(error)
 
 
 def configured_provider():

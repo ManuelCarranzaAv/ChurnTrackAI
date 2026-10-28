@@ -25,24 +25,28 @@ Flujo: `usuario → Supervisor → Predictivo → Supervisor → Retención → 
 
 ## Ver a los agentes trabajando
 
-- **Sala de agentes (en vivo):** `POST /api/public/analyze-stream` transmite en NDJSON cada mensaje del estado compartido mientras ocurre. La interfaz muestra el estado de cada agente (en espera, trabajando, consultando al LLM, listo o falló) y narra cada mensaje en lenguaje natural, con su contenido técnico desplegable. Se puede reproducir después desde *Auditoría de agentes*.
-- **Conversación por cliente:** en la ficha de cada cliente, Predictivo, Retención y Supervisor explican su parte (riesgo y factores, acción y simulación, verificación o revisión humana) y tú decides.
-- **Valor medible del LLM:** cada recomendación conserva la acción que habrían propuesto las reglas (`rule_baseline`). La interfaz muestra cuántas decisiones cambió el LLM, cuántas segundas opiniones dio el Supervisor y cuántas pidió revisar una persona.
+- **Agentes en acción (en vivo):** `POST /api/public/analyze-stream` transmite en NDJSON cada mensaje del estado compartido mientras ocurre. La interfaz muestra los 4 agentes como pasos en cadena (Predictivo → Retención → Supervisor → Estratega → Tú): qué hace cada uno, su estado (en espera, trabajando, consultando al LLM, listo) y **lo que entrega** (p. ej. «5 alto · 2 medio · 3 bajo», «3 reactivación · 2 regularizar pagos…», «9 aprobadas · 1 para revisar», el titular del resumen). La conversación completa, narrada en lenguaje natural, queda desplegable.
+- **Tu decisión (paso final):** la persona ve la recomendación final del Estratega, el veredicto del Supervisor y, por cliente, la cadena de agentes (riesgo → acción con reducción simulada → aprobación) con la justificación verificada del LLM. Acepta, rechaza o deshace cada propuesta y ve en barras el ingreso en riesgo hoy, con lo aceptado y si acepta todo lo validado.
+- **Valor medible del LLM:** cada recomendación conserva la acción que habrían propuesto las reglas (`rule_baseline`).
+
+## Robustez de los agentes
+
+- **Modelo de respaldo:** si `GROQ_MODEL` (gpt-oss-120b) responde 429 por cuota de tokens por minuto, 5xx o tiempo agotado, la misma llamada pasa a `GROQ_FALLBACK_MODEL` (gpt-oss-20b), que en Groq tiene su propia cuota. Una espera corta (≤ 3 s) se reintenta en el mismo modelo.
+- **Respuestas incompletas:** el primer intento es todo o nada y se reintenta; en el segundo se conservan las selecciones válidas y solo los clientes omitidos quedan con reglas, en vez de perder la etapa entera.
+- **Errores inesperados del proveedor** se convierten en un aviso controlado: el agente sigue con reglas y el análisis termina.
+- La interfaz distingue «reintento» y «resuelto con reglas» de un fallo real.
 
 ## ¿Cuántos clientes usar?
 
-- **24 (cartera de prueba, recomendada):** 9 de riesgo alto, 6 medio y 9 bajo, los 4 segmentos de valor, las 4 palancas de retención y 1 registro fuera de dominio. Así cada agente actúa al menos una vez.
-- **300:** demuestra la escala de la red neuronal. El LLM sigue revisando solo los `LLM_MAX_CUSTOMERS` clientes de mayor riesgo (10 por defecto: con las justificaciones cabe en el límite de 8.000 tokens por minuto del plan gratuito de Groq).
-- Validar el modelo en sí no se hace con ninguna de las dos: requiere miles de clientes históricos reales con su resultado conocido.
+- **10 (cartera de prueba, recomendada):** coincide con `LLM_MAX_CUSTOMERS`, así **cada cliente pasa por los 4 agentes con LLM**. Incluye riesgo alto, medio y bajo, las 3 palancas medibles (reclamos, pagos, reactivación) y 1 registro fuera de dominio para ver al Supervisor frenarlo.
+- **300:** demuestra la escala de la red neuronal; el LLM revisa los 10 de mayor riesgo y el resto usa reglas explícitas.
+- Validar el modelo en sí requiere miles de clientes históricos reales con su resultado conocido.
 
 ## Interfaz
 
-- **Nuevo análisis**: cartera de prueba (24), cartera grande (300), CSV propio (validado con errores por fila y vista previa) o un cliente; LLM opcional con consentimiento.
-- **Resumen ejecutivo**: brief del Estratega, KPI de ingreso en riesgo, matriz valor × riesgo interactiva, segmentos, prioridades, distribución y sensibilidad.
-- **Clientes**: búsqueda, filtros y ficha por cliente (salud, factores, recomendación, simulación, revisión de agentes, borrador de contacto).
-- **Agentes**: estado de cada agente, traza real de mensajes, uso de tokens y controles.
-- **Plan de acción**: aceptar/rechazar, aceptación conjunta que respeta las observaciones del Supervisor, exportación CSV con protección contra fórmulas.
-- **Simulador what-if** y **Modelo y método** (AUC, matriz de confusión, ROC, barreras y ruta a producción).
+- **Nuevo análisis**: cartera de prueba (10), cartera grande (300), CSV propio (validado con errores por fila y vista previa) o un cliente; LLM opcional con consentimiento.
+- **Flujo**: *Agentes en acción* → *Resultados* (resumen del Estratega, 3 KPI, prioridades y segmentos; gráficos detallados desplegables) → *Tu decisión*.
+- **Consultar**: *Clientes* (tabla simple con veredicto del Supervisor y ficha con la conversación de los agentes), *Auditoría técnica* (traza, tokens, intentos y modelo usado), *Simulador what-if* y *Modelo y método*.
 
 HTML/CSS/JS sin dependencias ni compilación, modo claro/oscuro y diseño responsive.
 
@@ -74,7 +78,7 @@ En ambos planes gratuitos el almacenamiento SQLite es temporal. El análisis pú
 | `POST /api/public/analyze` · `POST /api/public/analyze-csv` | Análisis temporal (JSON o CSV ≤300 filas, `use_llm` + consentimiento) |
 | `POST /api/public/validate-csv` | Validación y vista previa sin inferencia |
 | `POST /api/public/simulate` | Simulador what-if de un cliente (sin LLM ni almacenamiento) |
-| `POST /api/public/analyze-stream` | Igual que el análisis público, pero transmite los mensajes de los agentes en vivo (NDJSON); admite `?demo=24\|300`, CSV o JSON |
+| `POST /api/public/analyze-stream` | Igual que el análisis público, pero transmite los mensajes de los agentes en vivo (NDJSON); admite `?demo=10\|24\|300`, CSV o JSON |
 | `POST /api/analyze`, `GET /api/runs`, decisiones | Modo privado con `APP_API_KEY` (Bearer) e historial persistido |
 
 CSV: `cliente_id,antiguedad,compras_mensuales,monto_promedio,reclamos,dias_ultima_compra,pagos_atrasados`.

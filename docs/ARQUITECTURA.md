@@ -50,7 +50,8 @@ Informe + traza ──► revisión humana (aceptar / rechazar / exportar)
 
 - El riesgo siempre procede de la red; el LLM no lo modifica.
 - Un proveedor, cuatro roles: no son cuatro modelos distintos.
-- Hasta 20 clientes priorizados reciben revisión LLM; el resto, reglas explícitas. Cada etapa declara su cobertura real.
+- Hasta `LLM_MAX_CUSTOMERS` (10) clientes priorizados reciben revisión LLM; el resto, reglas explícitas. La cartera de prueba tiene 10 clientes para que todos pasen por los 4 agentes.
+- Groq con modelo de respaldo (`GROQ_FALLBACK_MODEL`) ante 429, 5xx o tiempo agotado; respuestas incompletas se reintentan y, en el segundo intento, se conservan las selecciones válidas.
 - La simulación es sensibilidad del modelo, no efecto causal.
 - No hay CRM, correo ni acciones externas; la aceptación es humana. Sin identidad individual de revisores en el modo público.
-- La traza visible es la ejecución completada, no streaming en vivo.
+- La traza se transmite en vivo (NDJSON) y el último paso es siempre la decisión humana.

@@ -64,7 +64,7 @@ seq = [call('/api/demo?size=24', b'')[2] for _ in range(10)]
 with cf.ThreadPoolExecutor(5) as pool:
     par = list(pool.map(lambda _: call('/api/demo?size=24', b''), range(5)))
 big = call('/api/demo?size=300', b'')
-report['timing_no_llm'] = {'demo24_sequential_s': [round(x, 3) for x in seq], 'demo24_mean_s': round(statistics.mean(seq), 3),
+report['timing_no_llm'] = {'demo10_sequential_s': [round(x, 3) for x in seq], 'demo10_mean_s': round(statistics.mean(seq), 3),
                            'concurrent_users': 5, 'concurrent_status': [p[0] for p in par], 'concurrent_mean_s': round(statistics.mean(p[2] for p in par), 3),
                            'demo300_s': round(big[2], 3), 'demo300_status': big[0]}
 
@@ -98,7 +98,7 @@ llm_runs = []
 for n in range(LLM_RUNS):
     if n:
         time.sleep(65)
-    run, events, elapsed = stream_run('demo=24&use_llm=true&consent=true')
+    run, events, elapsed = stream_run('demo=10&use_llm=true&consent=true')
     msgs = [e for e in events if e['type'] == 'message']
     sup = [r.get('supervisor_review', {}).get('action') for r in run['recommendations'] if r.get('supervisor_review')]
     reasons = [r['llm_reason'] for r in run['recommendations'] if r['source'] == 'llm']
@@ -109,7 +109,7 @@ for n in range(LLM_RUNS):
                      'llm_recommendations': len(reasons), 'reasons_kept': sum(bool(x) for x in reasons), 'changed_vs_rules': run['agent_report']['retention']['changed_vs_rules'],
                      'supervisor_approve': sup.count('approve_plan'), 'supervisor_review': sup.count('request_review'), 'executive_source': run['executive']['source'], 'mode': run['mode']})
     if n == 0:
-        (OUT / f'traza-demo24-llm-{stamp}.json').write_text(json.dumps({'request': 'POST /api/public/analyze-stream?demo=24&use_llm=true&consent=true',
+        (OUT / f'traza-demo10-llm-{stamp}.json').write_text(json.dumps({'request': 'POST /api/public/analyze-stream?demo=10&use_llm=true&consent=true',
             'stream_events': [{k: v for k, v in e.items() if k != 'run'} for e in events if e['type'] != 'result'], 'run': run}, ensure_ascii=False, indent=1), encoding='utf-8')
         ood = next(r for r in run['recommendations'] if r['cliente_id'] == 'CLI-024')
         case('P7', 'Cartera de 24 con LLM (incluye CLI-024 fuera de dominio)', 'Los 4 agentes validan su etapa con el LLM; CLI-024 recibe "validar datos"',

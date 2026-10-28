@@ -74,7 +74,7 @@ def create_app(db_url=None):
     store = Store(db_url or os.getenv('DATABASE_URL') or f'sqlite:///{(RUNTIME / "churn.db").as_posix()}')
     model = NeuralModel()
     supervisor = SupervisorAgent(model,configured_provider(),store)
-    app = FastAPI(title='ChurnTrackAI',version='2.2.1',docs_url=None,redoc_url=None,openapi_url=None)
+    app = FastAPI(title='ChurnTrackAI',version='2.3.0',docs_url=None,redoc_url=None,openapi_url=None)
     app.add_middleware(BodyLimit)
     app.state.store, app.state.supervisor = store, supervisor
     app.state.calls = []
@@ -118,14 +118,14 @@ def create_app(db_url=None):
             with store.engine.connect() as db:
                 from sqlalchemy import text
                 db.execute(text('SELECT 1'))
-            return {'status':'ok','model':'loaded','database':'ok','version':'2.2.1'}
+            return {'status':'ok','model':'loaded','database':'ok','version':'2.3.0'}
         except Exception:
             return JSONResponse({'status':'degraded','database':'unavailable'},503)
 
     @app.get('/api/config')
     def config():
         return {'agents':['supervisor','predictivo','retencion','estratega'],'hosting':'vercel' if os.getenv('VERCEL') else 'render' if os.getenv('RENDER') else 'local',
-                'llm_provider':getattr(supervisor.retention.provider,'name','unknown'),'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':llm_batch(),'demo_sizes':[24,300],'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER') or os.getenv('VERCEL')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
+                'llm_provider':getattr(supervisor.retention.provider,'name','unknown'),'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':llm_batch(),'demo_sizes':[10,300],'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER') or os.getenv('VERCEL')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
 
     @app.get('/api/metrics')
     def metrics():
@@ -158,11 +158,11 @@ def create_app(db_url=None):
             return await supervisor.run(payload,persist=persist,demo=demo)
 
     def demo_customers(size):
-        if size not in (12,24,300):
-            raise HTTPException(422,'La demostración admite 12, 24 o 300 clientes sintéticos.')
+        if size not in (10,12,24,300):
+            raise HTTPException(422,'La demostración admite 10, 12, 24 o 300 clientes sintéticos.')
         if size == 12:
             return json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
-        name = 'demo-24.csv' if size == 24 else 'example-300.csv'
+        name = {10:'demo-10.csv',24:'demo-24.csv'}.get(size,'example-300.csv')
         with (ROOT/'data'/name).open(encoding='utf-8') as source:
             return list(csv.DictReader(source))
 
@@ -350,6 +350,10 @@ def create_app(db_url=None):
     @app.get('/api/template.csv')
     def template():
         return FileResponse(ROOT/'data/template.csv',media_type='text/csv',filename='plantilla_clientes.csv')
+
+    @app.get('/api/example-10.csv')
+    def example_10():
+        return FileResponse(ROOT/'data/demo-10.csv',media_type='text/csv',filename='cartera_10_clientes_sinteticos.csv')
 
     @app.get('/api/example-24.csv')
     def example_24():

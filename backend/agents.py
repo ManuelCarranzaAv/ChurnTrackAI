@@ -327,7 +327,7 @@ def executive_facts(analytics):
         'ingreso_mensual_en_riesgo': money(analytics['revenue']['monthly_at_risk']),
         'porcentaje_ingreso_en_riesgo': f"{analytics['revenue']['share_at_risk']*100:.0f}%",
         'ingreso_anual_en_riesgo': money(analytics['revenue']['annual_at_risk']),
-        'concentracion_top20': f"{analytics['revenue']['top20_concentration']*100:.0f}%",
+        'porcentaje_del_ingreso_en_riesgo_que_concentra_el_top20_de_clientes': f"{analytics['revenue']['top20_concentration']*100:.0f}%",
         'salud_promedio': analytics['health_score'],
         'cuadrante_rescatar': quad['rescatar']['count'],
         'ingreso_en_riesgo_rescatar': money(quad['rescatar']['revenue_at_risk']),
@@ -341,7 +341,7 @@ def executive_facts(analytics):
 def rule_summary(f):
     findings = [
         f"{f['clientes_riesgo_alto']} de {f['clientes']} clientes ({f['porcentaje_riesgo_alto']}) tienen riesgo alto de abandono.",
-        f"El ingreso mensual en riesgo estimado es {f['ingreso_mensual_en_riesgo']} ({f['porcentaje_ingreso_en_riesgo']} del total); el 20% de clientes con más exposición concentra {f['concentracion_top20']}.",
+        f"El ingreso mensual en riesgo estimado es {f['ingreso_mensual_en_riesgo']} ({f['porcentaje_ingreso_en_riesgo']} del total); el 20% de clientes con más exposición concentra {f['porcentaje_del_ingreso_en_riesgo_que_concentra_el_top20_de_clientes']}.",
         f"{f['cuadrante_rescatar']} clientes combinan alto valor y riesgo: concentran {f['ingreso_en_riesgo_rescatar']} mensuales en riesgo.",
     ]
     first = ', '.join(c.split(' (')[0] for c in f['clientes_prioritarios'][:2])

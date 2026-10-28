@@ -78,3 +78,38 @@ def test_llm_public_alias_keeps_fixture_only(client):
     assert client.post('/api/demo/llm',json={'prompt':'x'}).status_code==422
     run=client.post('/api/demo/llm').json()
     assert len(run['predictions'])==3 and run['demo'] and run['ephemeral']
+
+
+def _groq_rows():
+    return [{'index':0,'probability':.1,'risk':'BAJO','observed':{k:v for k,v in ROW.items() if k!='cliente_id'},'allowed_actions':['monitor']}]
+
+def test_groq_retries_once_after_short_rate_limit(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY','unit-test-placeholder')
+    monkeypatch.setattr(asyncio,'sleep',lambda s:_noop())
+    calls=[]
+    def respond(request):
+        calls.append(1)
+        if len(calls)==1:
+            return httpx.Response(429,headers={'retry-after':'1.5'},json={'error':'rate'})
+        return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps({'choices':[{'index':0,'action':'monitor','evidence':['probability']}]})}}],'usage':{'total_tokens':5}})
+    original=httpx.AsyncClient
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(respond),**kw))
+    parsed,usage=asyncio.run(GroqProvider().choose(_groq_rows()))
+    assert len(calls)==2 and parsed.choices[0].action=='monitor' and usage['rate_limit_wait_s']==1.5
+
+@pytest.mark.parametrize('headers',[{'retry-after':'45'},{}])
+def test_groq_long_or_repeated_rate_limit_fails_safely(monkeypatch,headers):
+    monkeypatch.setenv('GROQ_API_KEY','unit-test-placeholder')
+    monkeypatch.setattr(asyncio,'sleep',lambda s:_noop())
+    calls=[]
+    def respond(request):
+        calls.append(1);return httpx.Response(429,headers=headers,json={'error':'rate'})
+    original=httpx.AsyncClient
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kw:original(transport=httpx.MockTransport(respond),**kw))
+    with pytest.raises(ProviderError,match='HTTP_429'):
+        asyncio.run(GroqProvider().choose(_groq_rows()))
+    # A long wait is not attempted; a short one is retried exactly once.
+    assert len(calls)==(1 if headers else 2)
+
+async def _noop():
+    return None

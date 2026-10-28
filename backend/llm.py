@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import httpx
@@ -156,6 +157,17 @@ class GeminiProvider:
             raise ProviderError(type(exc).__name__) from None
 
 
+MAX_RETRY_WAIT = 12.0
+
+def retry_delay(response):
+    """Seconds to wait before one retry after HTTP 429, or None when the provider asks for too long."""
+    try:
+        delay = float(response.headers.get('retry-after', '2'))
+    except ValueError:
+        return None
+    return max(delay, 0.5) if delay <= MAX_RETRY_WAIT else None
+
+
 class GroqProvider:
     name = 'groq'
     api = 'chat/completions'
@@ -192,15 +204,23 @@ class GroqProvider:
         if self.model.startswith('openai/gpt-oss-'):
             body['reasoning_effort'] = 'low'
         try:
+            waited = 0.0
             async with httpx.AsyncClient(timeout=12, follow_redirects=False) as client:
-                response = await client.post('https://api.groq.com/openai/v1/chat/completions',
-                    headers={'Authorization': 'Bearer '+self.key}, json=body)
+                for attempt in range(2):
+                    response = await client.post('https://api.groq.com/openai/v1/chat/completions',
+                        headers={'Authorization': 'Bearer '+self.key}, json=body)
+                    # Free tiers limit tokens per minute; a short provider-advised pause usually clears it.
+                    delay = retry_delay(response) if response.status_code == 429 and attempt == 0 else None
+                    if delay is None:
+                        break
+                    waited += delay
+                    await asyncio.sleep(delay)
                 if response.is_error:
                     raise ProviderError(f'HTTP_{response.status_code}_PROVIDER_REJECTED')
                 raw = response.json()
             content = raw['choices'][0]['message']['content']
             usage = raw.get('usage', {})
-            return content, {'provider': self.name, 'model': self.model,
+            return content, {'provider': self.name, 'model': self.model, 'rate_limit_wait_s': waited,
                 'input_tokens': usage.get('prompt_tokens'), 'output_tokens': usage.get('completion_tokens'),
                 'total_tokens': usage.get('total_tokens')}
         except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:

@@ -1,0 +1,5276 @@
+{
+ "request": "POST /api/public/analyze-stream?demo=24&use_llm=true&consent=true",
+ "stream_events": [
+  {
+   "type": "start",
+   "customers": 24,
+   "use_llm": true,
+   "llm_batch": 10,
+   "_received_s": 0.504
+  },
+  {
+   "type": "message",
+   "sequence": 1,
+   "timestamp": "2026-10-28T05:17:32.306899+00:00",
+   "sender": "usuario",
+   "recipient": "supervisor",
+   "tool": "analysis_request",
+   "status": "ok",
+   "brief": {
+    "customer_count": 24,
+    "requested_llm": true,
+    "demo": true
+   },
+   "_received_s": 0.504
+  },
+  {
+   "type": "message",
+   "sequence": 2,
+   "timestamp": "2026-10-28T05:17:32.306941+00:00",
+   "sender": "supervisor",
+   "recipient": "predictivo",
+   "tool": "delegate_prediction",
+   "status": "delegated",
+   "brief": {
+    "task": "validate, infer, explain"
+   },
+   "_received_s": 0.504
+  },
+  {
+   "type": "message",
+   "sequence": 3,
+   "timestamp": "2026-10-28T05:17:32.335213+00:00",
+   "sender": "predictivo",
+   "recipient": "supervisor",
+   "tool": "neural_inference_and_mean_ablation",
+   "status": "ok",
+   "brief": {
+    "customers": 24,
+    "high": 9,
+    "medium": 6,
+    "low": 9,
+    "out_of_domain": 1
+   },
+   "_received_s": 0.504
+  },
+  {
+   "type": "message",
+   "sequence": 4,
+   "timestamp": "2026-10-28T05:17:32.336713+00:00",
+   "sender": "predictivo",
+   "recipient": "llm",
+   "tool": "predictivo_llm_request",
+   "status": "ok",
+   "brief": {
+    "customers": 10,
+    "identifiers_removed": true
+   },
+   "_received_s": 0.504
+  },
+  {
+   "type": "message",
+   "sequence": 5,
+   "timestamp": "2026-10-28T05:17:34.708551+00:00",
+   "sender": "llm",
+   "recipient": "predictivo",
+   "tool": "predictivo_llm_result",
+   "status": "ok",
+   "brief": {
+    "choices": 10,
+    "actions": {
+     "review_data": 1,
+     "interpret_risk": 9
+    }
+   },
+   "_received_s": 2.813
+  },
+  {
+   "type": "message",
+   "sequence": 6,
+   "timestamp": "2026-10-28T05:17:34.708640+00:00",
+   "sender": "supervisor",
+   "recipient": "retencion",
+   "tool": "delegate_retention",
+   "status": "delegated",
+   "brief": {
+    "prediction_message": 3,
+    "task": "select grounded actions"
+   },
+   "_received_s": 2.823
+  },
+  {
+   "type": "message",
+   "sequence": 7,
+   "timestamp": "2026-10-28T05:17:34.710924+00:00",
+   "sender": "retencion",
+   "recipient": "llm",
+   "tool": "structured_selection_request",
+   "status": "ok",
+   "brief": {
+    "customers": 10,
+    "identifiers_removed": true
+   },
+   "_received_s": 2.823
+  },
+  {
+   "type": "message",
+   "sequence": 8,
+   "timestamp": "2026-10-28T05:17:37.001998+00:00",
+   "sender": "llm",
+   "recipient": "retencion",
+   "tool": "validated_json",
+   "status": "ok",
+   "brief": {
+    "choices": 10,
+    "actions": {
+     "review_data": 1,
+     "reactivate": 4,
+     "claims": 2,
+     "payments": 3
+    }
+   },
+   "_received_s": 5.126
+  },
+  {
+   "type": "message",
+   "sequence": 9,
+   "timestamp": "2026-10-28T05:17:37.011128+00:00",
+   "sender": "retencion",
+   "recipient": "supervisor",
+   "tool": "recommendations",
+   "status": "ok",
+   "brief": {
+    "customers": 24,
+    "source": "mixed",
+    "actions": {
+     "claims": 4,
+     "payments": 4,
+     "reactivate": 6,
+     "monitor": 9,
+     "review_data": 1
+    },
+    "correction": false
+   },
+   "_received_s": 5.136
+  },
+  {
+   "type": "message",
+   "sequence": 10,
+   "timestamp": "2026-10-28T05:17:37.018017+00:00",
+   "sender": "supervisor",
+   "recipient": "llm",
+   "tool": "supervisor_llm_request",
+   "status": "ok",
+   "brief": {
+    "customers": 10,
+    "identifiers_removed": true
+   },
+   "_received_s": 5.136
+  },
+  {
+   "type": "message",
+   "sequence": 11,
+   "timestamp": "2026-10-28T05:17:39.943547+00:00",
+   "sender": "llm",
+   "recipient": "supervisor",
+   "tool": "supervisor_llm_result",
+   "status": "ok",
+   "brief": {
+    "choices": 10,
+    "actions": {
+     "request_review": 1,
+     "approve_plan": 9
+    }
+   },
+   "_received_s": 8.045
+  },
+  {
+   "type": "message",
+   "sequence": 12,
+   "timestamp": "2026-10-28T05:17:39.943635+00:00",
+   "sender": "supervisor",
+   "recipient": "estratega",
+   "tool": "delegate_executive_summary",
+   "status": "delegated",
+   "brief": {
+    "task": "portfolio summary from verified aggregates"
+   },
+   "_received_s": 8.057
+  },
+  {
+   "type": "message",
+   "sequence": 13,
+   "timestamp": "2026-10-28T05:17:39.945215+00:00",
+   "sender": "estratega",
+   "recipient": "llm",
+   "tool": "executive_summary_request",
+   "status": "ok",
+   "brief": {
+    "facts": 11
+   },
+   "_received_s": 8.057
+  },
+  {
+   "type": "message",
+   "sequence": 14,
+   "timestamp": "2026-10-28T05:17:41.055004+00:00",
+   "sender": "llm",
+   "recipient": "estratega",
+   "tool": "executive_summary_result",
+   "status": "ok",
+   "brief": {
+    "validated": true,
+    "numbers_checked": true
+   },
+   "_received_s": 9.149
+  },
+  {
+   "type": "message",
+   "sequence": 15,
+   "timestamp": "2026-10-28T05:17:41.055076+00:00",
+   "sender": "estratega",
+   "recipient": "supervisor",
+   "tool": "executive_summary",
+   "status": "ok",
+   "brief": {
+    "source": "llm",
+    "headline": "S/ 735,887 de ingreso mensual en riesgo en 24 clientes"
+   },
+   "_received_s": 9.271
+  },
+  {
+   "type": "message",
+   "sequence": 16,
+   "timestamp": "2026-10-28T05:17:41.055104+00:00",
+   "sender": "supervisor",
+   "recipient": "usuario",
+   "tool": "validated_report",
+   "status": "ok",
+   "brief": {
+    "approved_for_human_review": true,
+    "external_actions_executed": 0
+   },
+   "_received_s": 9.271
+  }
+ ],
+ "run": {
+  "id": "ac4afca7-013a-4581-8b26-c57d764fafe3",
+  "created": "2026-10-28T05:17:32.306826+00:00",
+  "status": "completed",
+  "predictions": [
+   {
+    "cliente_id": "CLI-001",
+    "probability": 0.9999873553634285,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "reclamos",
+      "value": 7.0,
+      "delta_probability": 0.0007600095662871897
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 5.0,
+      "delta_probability": 0.0005048104737748194
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4810.0,
+      "delta_probability": 2.1765100837178863e-05
+     },
+     {
+      "feature": "antiguedad",
+      "value": 1.0,
+      "delta_probability": 1.7034598738141504e-05
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 13.0,
+      "delta_probability": -1.1202915538022218e-05
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 54.0,
+      "delta_probability": -4.931471498714757e-06
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 1.0,
+     "compras_mensuales": 13.0,
+     "monto_promedio": 4810.0,
+     "reclamos": 7.0,
+     "dias_ultima_compra": 54.0,
+     "pagos_atrasados": 5.0
+    },
+    "monthly_revenue": 62530.0,
+    "revenue_at_risk": 62529.20933087519,
+    "health_score": 0,
+    "llm_interpretation": {
+     "index": 0,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 1.0, 1 mes de antigüedad y 7 reclamos justifican interpretar riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-002",
+    "probability": 0.9850427154668309,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "reclamos",
+      "value": 7.0,
+      "delta_probability": 0.8439620020922485
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 3.0,
+      "delta_probability": 0.03533518737102326
+     },
+     {
+      "feature": "antiguedad",
+      "value": 12.0,
+      "delta_probability": 0.03526855213921154
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 16.0,
+      "delta_probability": -0.014756589484545168
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 13.0,
+      "delta_probability": -0.013389172734857291
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4839.0,
+      "delta_probability": 0.003631925362075128
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 12.0,
+     "compras_mensuales": 13.0,
+     "monto_promedio": 4839.0,
+     "reclamos": 7.0,
+     "dias_ultima_compra": 16.0,
+     "pagos_atrasados": 3.0
+    },
+    "monthly_revenue": 62907.0,
+    "revenue_at_risk": 61966.08210187193,
+    "health_score": 1,
+    "llm_interpretation": {
+     "index": 1,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 0.985, 12 meses, 7 reclamos y 3 pagos atrasados respaldan riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-003",
+    "probability": 0.992398767920916,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "pagos_atrasados",
+      "value": 5.0,
+      "delta_probability": 0.7383172826722695
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4273.0,
+      "delta_probability": 0.014100830587924107
+     },
+     {
+      "feature": "antiguedad",
+      "value": 10.0,
+      "delta_probability": 0.010329727913160336
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 15.0,
+      "delta_probability": -0.007197540860403029
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 51.0,
+      "delta_probability": -0.004091545285844211
+     },
+     {
+      "feature": "reclamos",
+      "value": 3.0,
+      "delta_probability": -0.004055265803447283
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 10.0,
+     "compras_mensuales": 15.0,
+     "monto_promedio": 4273.0,
+     "reclamos": 3.0,
+     "dias_ultima_compra": 51.0,
+     "pagos_atrasados": 5.0
+    },
+    "monthly_revenue": 64095.0,
+    "revenue_at_risk": 63607.79902989111,
+    "health_score": 1,
+    "llm_interpretation": {
+     "index": 2,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 0.992, 10 meses, 3 reclamos y 5 pagos atrasados sugieren riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-004",
+    "probability": 0.9954386673157471,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "pagos_atrasados",
+      "value": 5.0,
+      "delta_probability": 0.5274554948281078
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4645.0,
+      "delta_probability": 0.00799030853492766
+     },
+     {
+      "feature": "antiguedad",
+      "value": 12.0,
+      "delta_probability": 0.00543978956433544
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 25.0,
+      "delta_probability": -0.004385119877480803
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 11.0,
+      "delta_probability": -0.0033292035469117964
+     },
+     {
+      "feature": "reclamos",
+      "value": 4.0,
+      "delta_probability": 0.003000638861351823
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 12.0,
+     "compras_mensuales": 11.0,
+     "monto_promedio": 4645.0,
+     "reclamos": 4.0,
+     "dias_ultima_compra": 25.0,
+     "pagos_atrasados": 5.0
+    },
+    "monthly_revenue": 51095.0,
+    "revenue_at_risk": 50861.9387064981,
+    "health_score": 0,
+    "llm_interpretation": {
+     "index": 3,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 0.995, 12 meses y 4 reclamos respaldan riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-005",
+    "probability": 0.9999969857319304,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 103.0,
+      "delta_probability": 0.0007780838521608269
+     },
+     {
+      "feature": "reclamos",
+      "value": 6.0,
+      "delta_probability": 7.228492451705204e-05
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 4.0,
+      "delta_probability": 1.771057822597122e-05
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 15.0,
+      "delta_probability": -2.940824512687179e-06
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4814.0,
+      "delta_probability": 2.905099170114056e-06
+     },
+     {
+      "feature": "antiguedad",
+      "value": 44.0,
+      "delta_probability": 3.504654298991383e-07
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 44.0,
+     "compras_mensuales": 15.0,
+     "monto_promedio": 4814.0,
+     "reclamos": 6.0,
+     "dias_ultima_compra": 103.0,
+     "pagos_atrasados": 4.0
+    },
+    "monthly_revenue": 72210.0,
+    "revenue_at_risk": 72209.7823397027,
+    "health_score": 0,
+    "llm_interpretation": {
+     "index": 4,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 1.0, 44 meses de antigüedad y 6 reclamos respaldan interpretación de riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-006",
+    "probability": 0.9166277003511826,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 103.0,
+      "delta_probability": 0.9133898711864546
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4966.0,
+      "delta_probability": 0.1751432280148738
+     },
+     {
+      "feature": "reclamos",
+      "value": 4.0,
+      "delta_probability": 0.13167603889243173
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 0.0,
+      "delta_probability": -0.08320309302665962
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 14.0,
+      "delta_probability": -0.08315380483477564
+     },
+     {
+      "feature": "antiguedad",
+      "value": 45.0,
+      "delta_probability": -0.06695818638971573
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 45.0,
+     "compras_mensuales": 14.0,
+     "monto_promedio": 4966.0,
+     "reclamos": 4.0,
+     "dias_ultima_compra": 103.0,
+     "pagos_atrasados": 0.0
+    },
+    "monthly_revenue": 69524.0,
+    "revenue_at_risk": 63727.62423921562,
+    "health_score": 8,
+    "llm_interpretation": {
+     "index": 5,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 0.917, 45 meses, 4 reclamos y 0 pagos atrasados indican riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-007",
+    "probability": 0.998947609632551,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 100.0,
+      "delta_probability": 0.39907200455670844
+     },
+     {
+      "feature": "reclamos",
+      "value": 5.0,
+      "delta_probability": 0.013145449008079568
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 15.0,
+      "delta_probability": -0.0010219618129369001
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4226.0,
+      "delta_probability": 0.000986605582189548
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 1.0,
+      "delta_probability": -0.0008670589991491839
+     },
+     {
+      "feature": "antiguedad",
+      "value": 19.0,
+      "delta_probability": 2.7926140351852702e-05
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 19.0,
+     "compras_mensuales": 15.0,
+     "monto_promedio": 4226.0,
+     "reclamos": 5.0,
+     "dias_ultima_compra": 100.0,
+     "pagos_atrasados": 1.0
+    },
+    "monthly_revenue": 63390.0,
+    "revenue_at_risk": 63323.28897460741,
+    "health_score": 0,
+    "llm_interpretation": {
+     "index": 6,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 0.999, 19 meses y 5 reclamos indican riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-008",
+    "probability": 0.9946896338096205,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 82.0,
+      "delta_probability": 0.08565604253142722
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4456.0,
+      "delta_probability": 0.010405867726113405
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 13.0,
+      "delta_probability": -0.004888693257895982
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 2.0,
+      "delta_probability": -0.0026727559265377066
+     },
+     {
+      "feature": "reclamos",
+      "value": 4.0,
+      "delta_probability": 0.0025875601559242067
+     },
+     {
+      "feature": "antiguedad",
+      "value": 6.0,
+      "delta_probability": 0.0010492480040683594
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 6.0,
+     "compras_mensuales": 13.0,
+     "monto_promedio": 4456.0,
+     "reclamos": 4.0,
+     "dias_ultima_compra": 82.0,
+     "pagos_atrasados": 2.0
+    },
+    "monthly_revenue": 57928.0,
+    "revenue_at_risk": 57620.381107323694,
+    "health_score": 1,
+    "llm_interpretation": {
+     "index": 7,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 0.995, 6 meses, 4 reclamos y 2 pagos atrasados indican riesgo alto."
+    },
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-009",
+    "probability": 0.6506931246553934,
+    "risk": "MEDIO",
+    "factors": [
+     {
+      "feature": "pagos_atrasados",
+      "value": 5.0,
+      "delta_probability": 0.6391352203653782
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4827.0,
+      "delta_probability": 0.3849350101929514
+     },
+     {
+      "feature": "antiguedad",
+      "value": 7.0,
+      "delta_probability": 0.3654428982235748
+     },
+     {
+      "feature": "reclamos",
+      "value": 0.0,
+      "delta_probability": -0.34841464721828597
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 14.0,
+      "delta_probability": -0.34451259343920027
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 59.0,
+      "delta_probability": -0.031324072967146455
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 7.0,
+     "compras_mensuales": 14.0,
+     "monto_promedio": 4827.0,
+     "reclamos": 0.0,
+     "dias_ultima_compra": 59.0,
+     "pagos_atrasados": 5.0
+    },
+    "monthly_revenue": 67578.0,
+    "revenue_at_risk": 43972.53997796217,
+    "health_score": 35,
+    "quadrant": "rescatar"
+   },
+   {
+    "cliente_id": "CLI-010",
+    "probability": 0.6642550296745776,
+    "risk": "MEDIO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 83.0,
+      "delta_probability": 0.6337536928970091
+     },
+     {
+      "feature": "reclamos",
+      "value": 5.0,
+      "delta_probability": 0.5877126796583333
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 0.0,
+      "delta_probability": -0.333331130919025
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 15.0,
+      "delta_probability": -0.33330277994805235
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 3316.0,
+      "delta_probability": 0.10861034731032249
+     },
+     {
+      "feature": "antiguedad",
+      "value": 28.0,
+      "delta_probability": 0.07135641165756046
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 28.0,
+     "compras_mensuales": 15.0,
+     "monto_promedio": 3316.0,
+     "reclamos": 5.0,
+     "dias_ultima_compra": 83.0,
+     "pagos_atrasados": 0.0
+    },
+    "monthly_revenue": 49740.0,
+    "revenue_at_risk": 33040.04517601349,
+    "health_score": 34,
+    "quadrant": "automatizar"
+   },
+   {
+    "cliente_id": "CLI-011",
+    "probability": 0.5672693245638345,
+    "risk": "MEDIO",
+    "factors": [
+     {
+      "feature": "reclamos",
+      "value": 6.0,
+      "delta_probability": 0.5254368873846511
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 16.0,
+      "delta_probability": -0.43095598076250474
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 2.0,
+      "delta_probability": -0.23754671963719776
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 10.0,
+      "delta_probability": -0.2091380247642849
+     },
+     {
+      "feature": "antiguedad",
+      "value": 24.0,
+      "delta_probability": 0.15944585163977693
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4252.0,
+      "delta_probability": -0.0224994658034261
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 24.0,
+     "compras_mensuales": 10.0,
+     "monto_promedio": 4252.0,
+     "reclamos": 6.0,
+     "dias_ultima_compra": 16.0,
+     "pagos_atrasados": 2.0
+    },
+    "monthly_revenue": 42520.0,
+    "revenue_at_risk": 24120.291680454244,
+    "health_score": 43,
+    "quadrant": "automatizar"
+   },
+   {
+    "cliente_id": "CLI-012",
+    "probability": 0.6556278068748354,
+    "risk": "MEDIO",
+    "factors": [
+     {
+      "feature": "antiguedad",
+      "value": 4.0,
+      "delta_probability": 0.580392611471039
+     },
+     {
+      "feature": "reclamos",
+      "value": 5.0,
+      "delta_probability": 0.4087164599985772
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 11.0,
+      "delta_probability": -0.34168103868492994
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 1.0,
+      "delta_probability": -0.2922745204862942
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 6.0,
+      "delta_probability": 0.23173245665775094
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4896.0,
+      "delta_probability": 0.06431037170191656
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 4.0,
+     "compras_mensuales": 6.0,
+     "monto_promedio": 4896.0,
+     "reclamos": 5.0,
+     "dias_ultima_compra": 11.0,
+     "pagos_atrasados": 1.0
+    },
+    "monthly_revenue": 29376.0,
+    "revenue_at_risk": 19259.722454755163,
+    "health_score": 34,
+    "quadrant": "automatizar"
+   },
+   {
+    "cliente_id": "CLI-013",
+    "probability": 0.4149730879697427,
+    "risk": "MEDIO",
+    "factors": [
+     {
+      "feature": "reclamos",
+      "value": 0.0,
+      "delta_probability": -0.5815259367640622
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 10.0,
+      "delta_probability": -0.44863417758828933
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 79.0,
+      "delta_probability": 0.38134671810559034
+     },
+     {
+      "feature": "antiguedad",
+      "value": 12.0,
+      "delta_probability": 0.3176900238718746
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 2.0,
+      "delta_probability": -0.25810656917606417
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4280.0,
+      "delta_probability": 0.24608300000727615
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 12.0,
+     "compras_mensuales": 10.0,
+     "monto_promedio": 4280.0,
+     "reclamos": 0.0,
+     "dias_ultima_compra": 79.0,
+     "pagos_atrasados": 2.0
+    },
+    "monthly_revenue": 42800.0,
+    "revenue_at_risk": 17760.848165104988,
+    "health_score": 59,
+    "quadrant": "automatizar"
+   },
+   {
+    "cliente_id": "CLI-014",
+    "probability": 0.6707908381107195,
+    "risk": "MEDIO",
+    "factors": [
+     {
+      "feature": "pagos_atrasados",
+      "value": 4.0,
+      "delta_probability": 0.5976093392714139
+     },
+     {
+      "feature": "reclamos",
+      "value": 2.0,
+      "delta_probability": -0.3103677603114222
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 12.0,
+      "delta_probability": -0.30162081923544715
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 55.0,
+      "delta_probability": -0.11325796613396322
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 1850.0,
+      "delta_probability": -0.08568555261873645
+     },
+     {
+      "feature": "antiguedad",
+      "value": 28.0,
+      "delta_probability": 0.008643776320728214
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 28.0,
+     "compras_mensuales": 12.0,
+     "monto_promedio": 1850.0,
+     "reclamos": 2.0,
+     "dias_ultima_compra": 55.0,
+     "pagos_atrasados": 4.0
+    },
+    "monthly_revenue": 22200.0,
+    "revenue_at_risk": 14891.556606057973,
+    "health_score": 33,
+    "llm_interpretation": {
+     "index": 13,
+     "action": "interpret_risk",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 0.671, 28 meses, 2 reclamos y 4 pagos atrasados justifican riesgo medio."
+    },
+    "quadrant": "automatizar"
+   },
+   {
+    "cliente_id": "CLI-015",
+    "probability": 0.22120593892241733,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 40.0,
+      "delta_probability": -0.6523456939342239
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 12.0,
+      "delta_probability": -0.4979693418579779
+     },
+     {
+      "feature": "reclamos",
+      "value": 3.0,
+      "delta_probability": -0.27834517043995166
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 3.0,
+      "delta_probability": 0.1375352620208815
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4726.0,
+      "delta_probability": 0.0898104222956197
+     },
+     {
+      "feature": "antiguedad",
+      "value": 33.0,
+      "delta_probability": -0.028646027618955794
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 33.0,
+     "compras_mensuales": 12.0,
+     "monto_promedio": 4726.0,
+     "reclamos": 3.0,
+     "dias_ultima_compra": 40.0,
+     "pagos_atrasados": 3.0
+    },
+    "monthly_revenue": 56712.0,
+    "revenue_at_risk": 12545.031208168131,
+    "health_score": 78,
+    "quadrant": "proteger"
+   },
+   {
+    "cliente_id": "CLI-016",
+    "probability": 0.22692195577486113,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "reclamos",
+      "value": 1.0,
+      "delta_probability": -0.7613540333824094
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 13.0,
+      "delta_probability": -0.7129868098961354
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 39.0,
+      "delta_probability": -0.6783379156062832
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 5.0,
+      "delta_probability": 0.21972373113985422
+     },
+     {
+      "feature": "antiguedad",
+      "value": 10.0,
+      "delta_probability": 0.06391439992203571
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 2718.0,
+      "delta_probability": 0.00026872000081884506
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 10.0,
+     "compras_mensuales": 13.0,
+     "monto_promedio": 2718.0,
+     "reclamos": 1.0,
+     "dias_ultima_compra": 39.0,
+     "pagos_atrasados": 5.0
+    },
+    "monthly_revenue": 35334.0,
+    "revenue_at_risk": 8018.060385348943,
+    "health_score": 77,
+    "quadrant": "mantener"
+   },
+   {
+    "cliente_id": "CLI-017",
+    "probability": 0.19662665764767873,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "reclamos",
+      "value": 1.0,
+      "delta_probability": -0.7982340869339558
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 13.0,
+      "delta_probability": -0.794039016232186
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 1.0,
+      "delta_probability": -0.7190365497399182
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 102.0,
+      "delta_probability": 0.19437696736838406
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 2909.0,
+      "delta_probability": 0.023457182065447862
+     },
+     {
+      "feature": "antiguedad",
+      "value": 32.0,
+      "delta_probability": -0.0035700265085377714
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 32.0,
+     "compras_mensuales": 13.0,
+     "monto_promedio": 2909.0,
+     "reclamos": 1.0,
+     "dias_ultima_compra": 102.0,
+     "pagos_atrasados": 1.0
+    },
+    "monthly_revenue": 37817.0,
+    "revenue_at_risk": 7435.8303122622665,
+    "health_score": 80,
+    "quadrant": "mantener"
+   },
+   {
+    "cliente_id": "CLI-018",
+    "probability": 0.10301009524259502,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "pagos_atrasados",
+      "value": 0.0,
+      "delta_probability": -0.880138721955716
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 48.0,
+      "delta_probability": -0.43558514496124273
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 12.0,
+      "delta_probability": -0.3575843516470425
+     },
+     {
+      "feature": "antiguedad",
+      "value": 43.0,
+      "delta_probability": -0.17138409399735777
+     },
+     {
+      "feature": "reclamos",
+      "value": 6.0,
+      "delta_probability": 0.10132216532322418
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4849.0,
+      "delta_probability": 0.06611073354953055
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 43.0,
+     "compras_mensuales": 12.0,
+     "monto_promedio": 4849.0,
+     "reclamos": 6.0,
+     "dias_ultima_compra": 48.0,
+     "pagos_atrasados": 0.0
+    },
+    "monthly_revenue": 58188.0,
+    "revenue_at_risk": 5993.9514219761195,
+    "health_score": 90,
+    "quadrant": "proteger"
+   },
+   {
+    "cliente_id": "CLI-019",
+    "probability": 0.09089475329156167,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "compras_mensuales",
+      "value": 12.0,
+      "delta_probability": -0.3715910117058896
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 43.0,
+      "delta_probability": -0.34825547942852475
+     },
+     {
+      "feature": "reclamos",
+      "value": 3.0,
+      "delta_probability": -0.14540337653886393
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 2.0,
+      "delta_probability": -0.10955012448926056
+     },
+     {
+      "feature": "antiguedad",
+      "value": 25.0,
+      "delta_probability": 0.03187700862444586
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4852.0,
+      "delta_probability": 0.025978515332857915
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 25.0,
+     "compras_mensuales": 12.0,
+     "monto_promedio": 4852.0,
+     "reclamos": 3.0,
+     "dias_ultima_compra": 43.0,
+     "pagos_atrasados": 2.0
+    },
+    "monthly_revenue": 58224.0,
+    "revenue_at_risk": 5292.256115647887,
+    "health_score": 91,
+    "quadrant": "proteger"
+   },
+   {
+    "cliente_id": "CLI-020",
+    "probability": 0.381189537456859,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "pagos_atrasados",
+      "value": 1.0,
+      "delta_probability": -0.6054745354328374
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 43.0,
+      "delta_probability": -0.600001890500552
+     },
+     {
+      "feature": "antiguedad",
+      "value": 52.0,
+      "delta_probability": -0.45786134922409216
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 4.0,
+      "delta_probability": 0.35439023184319296
+     },
+     {
+      "feature": "reclamos",
+      "value": 4.0,
+      "delta_probability": 0.21658841903801065
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 3398.0,
+      "delta_probability": -0.07705229532385738
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 52.0,
+     "compras_mensuales": 4.0,
+     "monto_promedio": 3398.0,
+     "reclamos": 4.0,
+     "dias_ultima_compra": 43.0,
+     "pagos_atrasados": 1.0
+    },
+    "monthly_revenue": 13592.0,
+    "revenue_at_risk": 5181.128193113628,
+    "health_score": 62,
+    "quadrant": "mantener"
+   },
+   {
+    "cliente_id": "CLI-021",
+    "probability": 0.24200392092759054,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 9.0,
+      "delta_probability": -0.7574722805461167
+     },
+     {
+      "feature": "reclamos",
+      "value": 2.0,
+      "delta_probability": -0.6135781032672896
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 4.0,
+      "delta_probability": 0.23626573806275006
+     },
+     {
+      "feature": "antiguedad",
+      "value": 47.0,
+      "delta_probability": -0.2291078425678666
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 4.0,
+      "delta_probability": 0.2008210728390714
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4410.0,
+      "delta_probability": -0.036082235913240945
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 47.0,
+     "compras_mensuales": 4.0,
+     "monto_promedio": 4410.0,
+     "reclamos": 2.0,
+     "dias_ultima_compra": 9.0,
+     "pagos_atrasados": 4.0
+    },
+    "monthly_revenue": 17640.0,
+    "revenue_at_risk": 4268.949165162697,
+    "health_score": 76,
+    "quadrant": "mantener"
+   },
+   {
+    "cliente_id": "CLI-022",
+    "probability": 0.2028841436478134,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "reclamos",
+      "value": 0.0,
+      "delta_probability": -0.7960215083388704
+     },
+     {
+      "feature": "antiguedad",
+      "value": 43.0,
+      "delta_probability": -0.3596009455651057
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 2.0,
+      "delta_probability": -0.2836486782948946
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 5.0,
+      "delta_probability": 0.17688513044968565
+     },
+     {
+      "feature": "dias_ultima_compra",
+      "value": 68.0,
+      "delta_probability": 0.14849154181643148
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 3798.0,
+      "delta_probability": -0.041684024218401616
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 43.0,
+     "compras_mensuales": 5.0,
+     "monto_promedio": 3798.0,
+     "reclamos": 0.0,
+     "dias_ultima_compra": 68.0,
+     "pagos_atrasados": 2.0
+    },
+    "monthly_revenue": 18990.0,
+    "revenue_at_risk": 3852.7698878719766,
+    "health_score": 80,
+    "quadrant": "mantener"
+   },
+   {
+    "cliente_id": "CLI-023",
+    "probability": 0.14947034814817253,
+    "risk": "BAJO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 8.0,
+      "delta_probability": -0.8138869058424194
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 0.0,
+      "delta_probability": -0.663741484295127
+     },
+     {
+      "feature": "antiguedad",
+      "value": 4.0,
+      "delta_probability": 0.1434149728775122
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 5.0,
+      "delta_probability": 0.11890609276068116
+     },
+     {
+      "feature": "reclamos",
+      "value": 4.0,
+      "delta_probability": 0.060765155987131836
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 4293.0,
+      "delta_probability": 0.03396530273560683
+     }
+    ],
+    "warnings": [],
+    "observed": {
+     "antiguedad": 4.0,
+     "compras_mensuales": 5.0,
+     "monto_promedio": 4293.0,
+     "reclamos": 4.0,
+     "dias_ultima_compra": 8.0,
+     "pagos_atrasados": 0.0
+    },
+    "monthly_revenue": 21465.0,
+    "revenue_at_risk": 3208.3810230005233,
+    "health_score": 85,
+    "quadrant": "mantener"
+   },
+   {
+    "cliente_id": "CLI-024",
+    "probability": 0.9999999465612044,
+    "risk": "ALTO",
+    "factors": [
+     {
+      "feature": "dias_ultima_compra",
+      "value": 95.0,
+      "delta_probability": 4.554371754950104e-06
+     },
+     {
+      "feature": "monto_promedio",
+      "value": 7800.0,
+      "delta_probability": 1.1281052432199346e-06
+     },
+     {
+      "feature": "compras_mensuales",
+      "value": 4.0,
+      "delta_probability": 4.274016597305419e-07
+     },
+     {
+      "feature": "reclamos",
+      "value": 5.0,
+      "delta_probability": 2.6610259395987157e-07
+     },
+     {
+      "feature": "pagos_atrasados",
+      "value": 3.0,
+      "delta_probability": 5.4814373262601634e-08
+     },
+     {
+      "feature": "antiguedad",
+      "value": 14.0,
+      "delta_probability": -2.1343589118316686e-09
+     }
+    ],
+    "warnings": [
+     "monto_promedio: fuera del rango sintético del notebook [100, 4999]"
+    ],
+    "observed": {
+     "antiguedad": 14.0,
+     "compras_mensuales": 4.0,
+     "monto_promedio": 7800.0,
+     "reclamos": 5.0,
+     "dias_ultima_compra": 95.0,
+     "pagos_atrasados": 3.0
+    },
+    "monthly_revenue": 31200.0,
+    "revenue_at_risk": 31199.998332709576,
+    "health_score": 0,
+    "llm_interpretation": {
+     "index": 23,
+     "action": "review_data",
+     "evidence": [
+      "probability",
+      "antiguedad",
+      "compras_mensuales",
+      "monto_promedio",
+      "reclamos",
+      "dias_ultima_compra",
+      "pagos_atrasados"
+     ],
+     "reason": "Probabilidad 1.0 y 5 reclamos, 3 pagos atrasados indican necesidad de revisar datos."
+    },
+    "quadrant": "automatizar"
+   }
+  ],
+  "recommendations": [
+   {
+    "cliente_id": "CLI-001",
+    "action": "claims",
+    "evidence": [
+     "reclamos"
+    ],
+    "rationale": "Revisar los reclamos registrados con el ejecutivo. Evidencia: reclamos = 7.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Atención al cliente",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Revisar el estado y detalle de los reclamos.",
+     "Acordar un responsable y verificar la resolución con el cliente."
+    ],
+    "success_check": "Estado de cada reclamo actualizado y validado.",
+    "simulation": {
+     "scenario": "Reclamos resueltos (0 pendientes)",
+     "changes": {
+      "reclamos": 0
+     },
+     "probability_after": 0.727657217963385,
+     "risk_reduction": 0.2723301374000435,
+     "revenue_protected_monthly": 17028.803491624723
+    },
+    "rule_baseline": "claims",
+    "llm_reason": "Impacto más alto (0.272) para claims.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 0,
+     "action": "approve_plan",
+     "evidence": [
+      "reclamos",
+      "probability"
+     ],
+     "reason": "Reclamos=7≥3 y impacto 0.272 supera a los demás."
+    }
+   },
+   {
+    "cliente_id": "CLI-002",
+    "action": "claims",
+    "evidence": [
+     "reclamos"
+    ],
+    "rationale": "Revisar los reclamos registrados con el ejecutivo. Evidencia: reclamos = 7.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Atención al cliente",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Revisar el estado y detalle de los reclamos.",
+     "Acordar un responsable y verificar la resolución con el cliente."
+    ],
+    "success_check": "Estado de cada reclamo actualizado y validado.",
+    "simulation": {
+     "scenario": "Reclamos resueltos (0 pendientes)",
+     "changes": {
+      "reclamos": 0
+     },
+     "probability_after": 0.0013990725472835322,
+     "risk_reduction": 0.9836436429195473,
+     "revenue_protected_monthly": 61878.07064513996
+    },
+    "rule_baseline": "claims",
+    "llm_reason": "Impacto más alto (0.984) para claims.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 1,
+     "action": "approve_plan",
+     "evidence": [
+      "reclamos",
+      "probability"
+     ],
+     "reason": "Reclamos=7≥3 y impacto 0.984 domina."
+    }
+   },
+   {
+    "cliente_id": "CLI-003",
+    "action": "payments",
+    "evidence": [
+     "pagos_atrasados"
+    ],
+    "rationale": "Revisar pagos atrasados y evaluar alternativas. Evidencia: pagos_atrasados = 5.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Cobranza y ejecutivo comercial",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Validar vencimientos y posibles errores de registro.",
+     "Conversar sobre alternativas autorizadas por la empresa."
+    ],
+    "success_check": "Situación de pagos verificada y acuerdo documentado, si existe.",
+    "simulation": {
+     "scenario": "Pagos regularizados (0 atrasados)",
+     "changes": {
+      "pagos_atrasados": 0
+     },
+     "probability_after": 0.006773755127474831,
+     "risk_reduction": 0.9856250127934412,
+     "revenue_protected_monthly": 63173.635194995615
+    },
+    "rule_baseline": "payments",
+    "llm_reason": "Impacto mayor (0.986) para payments.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 2,
+     "action": "approve_plan",
+     "evidence": [
+      "pagos_atrasados",
+      "probability"
+     ],
+     "reason": "Pagos_atrasados=5≥2 y impacto 0.986 es superior."
+    }
+   },
+   {
+    "cliente_id": "CLI-004",
+    "action": "payments",
+    "evidence": [
+     "pagos_atrasados"
+    ],
+    "rationale": "Revisar pagos atrasados y evaluar alternativas. Evidencia: pagos_atrasados = 5.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Cobranza y ejecutivo comercial",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Validar vencimientos y posibles errores de registro.",
+     "Conversar sobre alternativas autorizadas por la empresa."
+    ],
+    "success_check": "Situación de pagos verificada y acuerdo documentado, si existe.",
+    "simulation": {
+     "scenario": "Pagos regularizados (0 atrasados)",
+     "changes": {
+      "pagos_atrasados": 0
+     },
+     "probability_after": 0.016406274261027178,
+     "risk_reduction": 0.97903239305472,
+     "revenue_protected_monthly": 50023.66012313092
+    },
+    "rule_baseline": "payments",
+    "llm_reason": "Impacto superior (0.979) para payments.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 3,
+     "action": "approve_plan",
+     "evidence": [
+      "pagos_atrasados",
+      "probability"
+     ],
+     "reason": "Pagos_atrasados=5≥2 y impacto 0.979 es el más alto."
+    }
+   },
+   {
+    "cliente_id": "CLI-005",
+    "action": "reactivate",
+    "evidence": [
+     "dias_ultima_compra"
+    ],
+    "rationale": "Consultar necesidades y proponer reactivación. Evidencia: dias_ultima_compra = 103.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Ejecutivo comercial",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Comprobar la fecha de la última compra.",
+     "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+    ],
+    "success_check": "Respuesta del cliente y oportunidad confirmada, si corresponde.",
+    "simulation": {
+     "scenario": "Compra reciente (15 días)",
+     "changes": {
+      "dias_ultima_compra": 15
+     },
+     "probability_after": 0.7905950949675092,
+     "risk_reduction": 0.20940189076442117,
+     "revenue_protected_monthly": 15120.910532098853
+    },
+    "rule_baseline": "reactivate",
+    "llm_reason": "Mayor impacto (0.209) entre acciones permitidas.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 4,
+     "action": "approve_plan",
+     "evidence": [
+      "dias_ultima_compra",
+      "probability"
+     ],
+     "reason": "Dias_ultima_compra=103≥60 y impacto 0.209 es mayor que otros impactos."
+    }
+   },
+   {
+    "cliente_id": "CLI-006",
+    "action": "reactivate",
+    "evidence": [
+     "dias_ultima_compra"
+    ],
+    "rationale": "Consultar necesidades y proponer reactivación. Evidencia: dias_ultima_compra = 103.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Ejecutivo comercial",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Comprobar la fecha de la última compra.",
+     "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+    ],
+    "success_check": "Respuesta del cliente y oportunidad confirmada, si corresponde.",
+    "simulation": {
+     "scenario": "Compra reciente (15 días)",
+     "changes": {
+      "dias_ultima_compra": 15
+     },
+     "probability_after": 0.00011880233935533434,
+     "risk_reduction": 0.9165088980118272,
+     "revenue_protected_monthly": 63719.36462537428
+    },
+    "rule_baseline": "reactivate",
+    "llm_reason": "Impacto máximo (0.916) para reactivate.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 5,
+     "action": "approve_plan",
+     "evidence": [
+      "dias_ultima_compra",
+      "probability"
+     ],
+     "reason": "Dias_ultima_compra=103≥60; impacto 0.916 casi igual al mayor (0.914)."
+    }
+   },
+   {
+    "cliente_id": "CLI-007",
+    "action": "reactivate",
+    "evidence": [
+     "dias_ultima_compra"
+    ],
+    "rationale": "Consultar necesidades y proponer reactivación. Evidencia: dias_ultima_compra = 100.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Ejecutivo comercial",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Comprobar la fecha de la última compra.",
+     "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+    ],
+    "success_check": "Respuesta del cliente y oportunidad confirmada, si corresponde.",
+    "simulation": {
+     "scenario": "Compra reciente (15 días)",
+     "changes": {
+      "dias_ultima_compra": 15
+     },
+     "probability_after": 0.00752151657478404,
+     "risk_reduction": 0.991426093057767,
+     "revenue_protected_monthly": 62846.500038931845
+    },
+    "rule_baseline": "reactivate",
+    "llm_reason": "Impacto máximo (0.991) para reactivate.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 6,
+     "action": "approve_plan",
+     "evidence": [
+      "dias_ultima_compra",
+      "probability"
+     ],
+     "reason": "Dias_ultima_compra=100≥60 y impacto 0.991 es el mayor."
+    }
+   },
+   {
+    "cliente_id": "CLI-008",
+    "action": "reactivate",
+    "evidence": [
+     "dias_ultima_compra"
+    ],
+    "rationale": "Consultar necesidades y proponer reactivación. Evidencia: dias_ultima_compra = 82.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Ejecutivo comercial",
+    "timeframe": "Propuesta: en 48 horas",
+    "steps": [
+     "Comprobar la fecha de la última compra.",
+     "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+    ],
+    "success_check": "Respuesta del cliente y oportunidad confirmada, si corresponde.",
+    "simulation": {
+     "scenario": "Compra reciente (15 días)",
+     "changes": {
+      "dias_ultima_compra": 15
+     },
+     "probability_after": 0.07073784117921549,
+     "risk_reduction": 0.923951792630405,
+     "revenue_protected_monthly": 53522.679443494104
+    },
+    "rule_baseline": "reactivate",
+    "llm_reason": "Impacto más alto (0.924) entre opciones.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 7,
+     "action": "approve_plan",
+     "evidence": [
+      "dias_ultima_compra",
+      "probability"
+     ],
+     "reason": "Dias_ultima_compra=82≥60 y impacto 0.924 lidera."
+    }
+   },
+   {
+    "cliente_id": "CLI-009",
+    "action": "payments",
+    "evidence": [
+     "pagos_atrasados"
+    ],
+    "rationale": "Revisar pagos atrasados y evaluar alternativas. Evidencia: pagos_atrasados = 5.0. Validar el contexto con una persona.",
+    "priority": "ATENCION",
+    "source": "rules",
+    "owner": "Cobranza y ejecutivo comercial",
+    "timeframe": "Propuesta: esta semana",
+    "steps": [
+     "Validar vencimientos y posibles errores de registro.",
+     "Conversar sobre alternativas autorizadas por la empresa."
+    ],
+    "success_check": "Situación de pagos verificada y acuerdo documentado, si existe.",
+    "simulation": {
+     "scenario": "Pagos regularizados (0 atrasados)",
+     "changes": {
+      "pagos_atrasados": 0
+     },
+     "probability_after": 0.0003635824305933215,
+     "risk_reduction": 0.6503295422248001,
+     "revenue_protected_monthly": 43947.96980446754
+    },
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-010",
+    "action": "reactivate",
+    "evidence": [
+     "dias_ultima_compra"
+    ],
+    "rationale": "Consultar necesidades y proponer reactivación. Evidencia: dias_ultima_compra = 83.0. Validar el contexto con una persona.",
+    "priority": "ATENCION",
+    "source": "rules",
+    "owner": "Ejecutivo comercial",
+    "timeframe": "Propuesta: esta semana",
+    "steps": [
+     "Comprobar la fecha de la última compra.",
+     "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+    ],
+    "success_check": "Respuesta del cliente y oportunidad confirmada, si corresponde.",
+    "simulation": {
+     "scenario": "Compra reciente (15 días)",
+     "changes": {
+      "dias_ultima_compra": 15
+     },
+     "probability_after": 0.0005866989141502613,
+     "risk_reduction": 0.6636683307604273,
+     "revenue_protected_monthly": 33010.862772023655
+    },
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-011",
+    "action": "claims",
+    "evidence": [
+     "reclamos"
+    ],
+    "rationale": "Revisar los reclamos registrados con el ejecutivo. Evidencia: reclamos = 6.0. Validar el contexto con una persona.",
+    "priority": "ATENCION",
+    "source": "rules",
+    "owner": "Atención al cliente",
+    "timeframe": "Propuesta: esta semana",
+    "steps": [
+     "Revisar el estado y detalle de los reclamos.",
+     "Acordar un responsable y verificar la resolución con el cliente."
+    ],
+    "success_check": "Estado de cada reclamo actualizado y validado.",
+    "simulation": {
+     "scenario": "Reclamos resueltos (0 pendientes)",
+     "changes": {
+      "reclamos": 0
+     },
+     "probability_after": 0.0007606709591673797,
+     "risk_reduction": 0.5665086536046671,
+     "revenue_protected_monthly": 24087.947951270442
+    },
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-012",
+    "action": "claims",
+    "evidence": [
+     "reclamos"
+    ],
+    "rationale": "Revisar los reclamos registrados con el ejecutivo. Evidencia: reclamos = 5.0. Validar el contexto con una persona.",
+    "priority": "ATENCION",
+    "source": "rules",
+    "owner": "Atención al cliente",
+    "timeframe": "Propuesta: esta semana",
+    "steps": [
+     "Revisar el estado y detalle de los reclamos.",
+     "Acordar un responsable y verificar la resolución con el cliente."
+    ],
+    "success_check": "Estado de cada reclamo actualizado y validado.",
+    "simulation": {
+     "scenario": "Reclamos resueltos (0 pendientes)",
+     "changes": {
+      "reclamos": 0
+     },
+     "probability_after": 0.0016492588021452576,
+     "risk_reduction": 0.6539785480726901,
+     "revenue_protected_monthly": 19211.273828183344
+    },
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-013",
+    "action": "reactivate",
+    "evidence": [
+     "dias_ultima_compra"
+    ],
+    "rationale": "Consultar necesidades y proponer reactivación. Evidencia: dias_ultima_compra = 79.0. Validar el contexto con una persona.",
+    "priority": "ATENCION",
+    "source": "rules",
+    "owner": "Ejecutivo comercial",
+    "timeframe": "Propuesta: esta semana",
+    "steps": [
+     "Comprobar la fecha de la última compra.",
+     "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+    ],
+    "success_check": "Respuesta del cliente y oportunidad confirmada, si corresponde.",
+    "simulation": {
+     "scenario": "Compra reciente (15 días)",
+     "changes": {
+      "dias_ultima_compra": 15
+     },
+     "probability_after": 0.0010894068602131108,
+     "risk_reduction": 0.41388368110952956,
+     "revenue_protected_monthly": 17714.221551487866
+    },
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-014",
+    "action": "payments",
+    "evidence": [
+     "pagos_atrasados"
+    ],
+    "rationale": "Revisar pagos atrasados y evaluar alternativas. Evidencia: pagos_atrasados = 4.0. Validar el contexto con una persona.",
+    "priority": "ATENCION",
+    "source": "llm",
+    "owner": "Cobranza y ejecutivo comercial",
+    "timeframe": "Propuesta: esta semana",
+    "steps": [
+     "Validar vencimientos y posibles errores de registro.",
+     "Conversar sobre alternativas autorizadas por la empresa."
+    ],
+    "success_check": "Situación de pagos verificada y acuerdo documentado, si existe.",
+    "simulation": {
+     "scenario": "Pagos regularizados (0 atrasados)",
+     "changes": {
+      "pagos_atrasados": 0
+     },
+     "probability_after": 0.001746410316824157,
+     "risk_reduction": 0.6690444277938953,
+     "revenue_protected_monthly": 14852.786297024475
+    },
+    "rule_baseline": "payments",
+    "llm_reason": "Única acción permitida con impacto 0.669.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 13,
+     "action": "approve_plan",
+     "evidence": [
+      "pagos_atrasados",
+      "probability"
+     ],
+     "reason": "Pagos_atrasados=4≥2 y impacto 0.669 es el único."
+    }
+   },
+   {
+    "cliente_id": "CLI-015",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.221206. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-016",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.226922. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-017",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.196627. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-018",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.10301. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-019",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.090895. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-020",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.38119. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-021",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.242004. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-022",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.202884. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-023",
+    "action": "monitor",
+    "evidence": [
+     "probability"
+    ],
+    "rationale": "Mantener seguimiento comercial. Evidencia: probability = 0.14947. Validar el contexto con una persona.",
+    "priority": "NORMAL",
+    "source": "rules",
+    "owner": "Analista comercial",
+    "timeframe": "Propuesta: próximo corte mensual",
+    "steps": [
+     "Revisar indicadores en el siguiente corte.",
+     "Comparar la frecuencia de compra con su historial."
+    ],
+    "success_check": "Nueva revisión registrada; no asumir retención lograda.",
+    "simulation": null,
+    "rule_baseline": "",
+    "llm_reason": "",
+    "decision": "pending"
+   },
+   {
+    "cliente_id": "CLI-024",
+    "action": "review_data",
+    "evidence": [
+     "probability",
+     "antiguedad",
+     "compras_mensuales",
+     "monto_promedio",
+     "reclamos",
+     "dias_ultima_compra",
+     "pagos_atrasados"
+    ],
+    "rationale": "Validar datos fuera del dominio antes de actuar. Evidencia: probability = 1.0; antiguedad = 14.0; compras_mensuales = 4.0; monto_promedio = 7800.0; reclamos = 5.0; dias_ultima_compra = 95.0; pagos_atrasados = 3.0. Validar el contexto con una persona.",
+    "priority": "URGENTE",
+    "source": "llm",
+    "owner": "Responsable de datos",
+    "timeframe": "Antes de actuar",
+    "steps": [
+     "Contrastar los valores con la fuente original.",
+     "Corregir errores o validar un modelo adecuado antes de decidir."
+    ],
+    "success_check": "Datos validados; no actuar basándose en una extrapolación.",
+    "simulation": null,
+    "rule_baseline": "review_data",
+    "llm_reason": "Solo acción permitida es review_data según los datos.",
+    "decision": "pending",
+    "supervisor_review": {
+     "index": 23,
+     "action": "request_review",
+     "evidence": [
+      "probability"
+     ],
+     "reason": "Acción propuesta no está entre las permitidas; datos fuera de dominio (probability=1.0)."
+    }
+   }
+  ],
+  "trace": [
+   {
+    "sequence": 1,
+    "timestamp": "2026-10-28T05:17:32.306899+00:00",
+    "sender": "usuario",
+    "recipient": "supervisor",
+    "tool": "analysis_request",
+    "status": "ok",
+    "payload": {
+     "customer_count": 24,
+     "requested_llm": true,
+     "demo": true
+    },
+    "brief": {
+     "customer_count": 24,
+     "requested_llm": true,
+     "demo": true
+    }
+   },
+   {
+    "sequence": 2,
+    "timestamp": "2026-10-28T05:17:32.306941+00:00",
+    "sender": "supervisor",
+    "recipient": "predictivo",
+    "tool": "delegate_prediction",
+    "status": "delegated",
+    "payload": {
+     "task": "validate, infer, explain"
+    },
+    "brief": {
+     "task": "validate, infer, explain"
+    }
+   },
+   {
+    "sequence": 3,
+    "timestamp": "2026-10-28T05:17:32.335213+00:00",
+    "sender": "predictivo",
+    "recipient": "supervisor",
+    "tool": "neural_inference_and_mean_ablation",
+    "status": "ok",
+    "payload": {
+     "model_sha256": "bf9b63beea3d7565ab920e6d8459ff3de627609a207c2b8bd3c58c84eca77ca8",
+     "outputs": [
+      {
+       "index": 0,
+       "probability": 0.9999873553634285,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "reclamos",
+         "value": 7.0,
+         "delta_probability": 0.0007600095662871897
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 5.0,
+         "delta_probability": 0.0005048104737748194
+        },
+        {
+         "feature": "monto_promedio",
+         "value": 4810.0,
+         "delta_probability": 2.1765100837178863e-05
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 1,
+       "probability": 0.9850427154668309,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "reclamos",
+         "value": 7.0,
+         "delta_probability": 0.8439620020922485
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 3.0,
+         "delta_probability": 0.03533518737102326
+        },
+        {
+         "feature": "antiguedad",
+         "value": 12.0,
+         "delta_probability": 0.03526855213921154
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 2,
+       "probability": 0.992398767920916,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "pagos_atrasados",
+         "value": 5.0,
+         "delta_probability": 0.7383172826722695
+        },
+        {
+         "feature": "monto_promedio",
+         "value": 4273.0,
+         "delta_probability": 0.014100830587924107
+        },
+        {
+         "feature": "antiguedad",
+         "value": 10.0,
+         "delta_probability": 0.010329727913160336
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 3,
+       "probability": 0.9954386673157471,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "pagos_atrasados",
+         "value": 5.0,
+         "delta_probability": 0.5274554948281078
+        },
+        {
+         "feature": "monto_promedio",
+         "value": 4645.0,
+         "delta_probability": 0.00799030853492766
+        },
+        {
+         "feature": "antiguedad",
+         "value": 12.0,
+         "delta_probability": 0.00543978956433544
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 4,
+       "probability": 0.9999969857319304,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 103.0,
+         "delta_probability": 0.0007780838521608269
+        },
+        {
+         "feature": "reclamos",
+         "value": 6.0,
+         "delta_probability": 7.228492451705204e-05
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 4.0,
+         "delta_probability": 1.771057822597122e-05
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 5,
+       "probability": 0.9166277003511826,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 103.0,
+         "delta_probability": 0.9133898711864546
+        },
+        {
+         "feature": "monto_promedio",
+         "value": 4966.0,
+         "delta_probability": 0.1751432280148738
+        },
+        {
+         "feature": "reclamos",
+         "value": 4.0,
+         "delta_probability": 0.13167603889243173
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 6,
+       "probability": 0.998947609632551,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 100.0,
+         "delta_probability": 0.39907200455670844
+        },
+        {
+         "feature": "reclamos",
+         "value": 5.0,
+         "delta_probability": 0.013145449008079568
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 15.0,
+         "delta_probability": -0.0010219618129369001
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 7,
+       "probability": 0.9946896338096205,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 82.0,
+         "delta_probability": 0.08565604253142722
+        },
+        {
+         "feature": "monto_promedio",
+         "value": 4456.0,
+         "delta_probability": 0.010405867726113405
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 13.0,
+         "delta_probability": -0.004888693257895982
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 8,
+       "probability": 0.6506931246553934,
+       "risk": "MEDIO",
+       "factors": [
+        {
+         "feature": "pagos_atrasados",
+         "value": 5.0,
+         "delta_probability": 0.6391352203653782
+        },
+        {
+         "feature": "monto_promedio",
+         "value": 4827.0,
+         "delta_probability": 0.3849350101929514
+        },
+        {
+         "feature": "antiguedad",
+         "value": 7.0,
+         "delta_probability": 0.3654428982235748
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 9,
+       "probability": 0.6642550296745776,
+       "risk": "MEDIO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 83.0,
+         "delta_probability": 0.6337536928970091
+        },
+        {
+         "feature": "reclamos",
+         "value": 5.0,
+         "delta_probability": 0.5877126796583333
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 0.0,
+         "delta_probability": -0.333331130919025
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 10,
+       "probability": 0.5672693245638345,
+       "risk": "MEDIO",
+       "factors": [
+        {
+         "feature": "reclamos",
+         "value": 6.0,
+         "delta_probability": 0.5254368873846511
+        },
+        {
+         "feature": "dias_ultima_compra",
+         "value": 16.0,
+         "delta_probability": -0.43095598076250474
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 2.0,
+         "delta_probability": -0.23754671963719776
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 11,
+       "probability": 0.6556278068748354,
+       "risk": "MEDIO",
+       "factors": [
+        {
+         "feature": "antiguedad",
+         "value": 4.0,
+         "delta_probability": 0.580392611471039
+        },
+        {
+         "feature": "reclamos",
+         "value": 5.0,
+         "delta_probability": 0.4087164599985772
+        },
+        {
+         "feature": "dias_ultima_compra",
+         "value": 11.0,
+         "delta_probability": -0.34168103868492994
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 12,
+       "probability": 0.4149730879697427,
+       "risk": "MEDIO",
+       "factors": [
+        {
+         "feature": "reclamos",
+         "value": 0.0,
+         "delta_probability": -0.5815259367640622
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 10.0,
+         "delta_probability": -0.44863417758828933
+        },
+        {
+         "feature": "dias_ultima_compra",
+         "value": 79.0,
+         "delta_probability": 0.38134671810559034
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 13,
+       "probability": 0.6707908381107195,
+       "risk": "MEDIO",
+       "factors": [
+        {
+         "feature": "pagos_atrasados",
+         "value": 4.0,
+         "delta_probability": 0.5976093392714139
+        },
+        {
+         "feature": "reclamos",
+         "value": 2.0,
+         "delta_probability": -0.3103677603114222
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 12.0,
+         "delta_probability": -0.30162081923544715
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 14,
+       "probability": 0.22120593892241733,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 40.0,
+         "delta_probability": -0.6523456939342239
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 12.0,
+         "delta_probability": -0.4979693418579779
+        },
+        {
+         "feature": "reclamos",
+         "value": 3.0,
+         "delta_probability": -0.27834517043995166
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 15,
+       "probability": 0.22692195577486113,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "reclamos",
+         "value": 1.0,
+         "delta_probability": -0.7613540333824094
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 13.0,
+         "delta_probability": -0.7129868098961354
+        },
+        {
+         "feature": "dias_ultima_compra",
+         "value": 39.0,
+         "delta_probability": -0.6783379156062832
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 16,
+       "probability": 0.19662665764767873,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "reclamos",
+         "value": 1.0,
+         "delta_probability": -0.7982340869339558
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 13.0,
+         "delta_probability": -0.794039016232186
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 1.0,
+         "delta_probability": -0.7190365497399182
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 17,
+       "probability": 0.10301009524259502,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "pagos_atrasados",
+         "value": 0.0,
+         "delta_probability": -0.880138721955716
+        },
+        {
+         "feature": "dias_ultima_compra",
+         "value": 48.0,
+         "delta_probability": -0.43558514496124273
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 12.0,
+         "delta_probability": -0.3575843516470425
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 18,
+       "probability": 0.09089475329156167,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "compras_mensuales",
+         "value": 12.0,
+         "delta_probability": -0.3715910117058896
+        },
+        {
+         "feature": "dias_ultima_compra",
+         "value": 43.0,
+         "delta_probability": -0.34825547942852475
+        },
+        {
+         "feature": "reclamos",
+         "value": 3.0,
+         "delta_probability": -0.14540337653886393
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 19,
+       "probability": 0.381189537456859,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "pagos_atrasados",
+         "value": 1.0,
+         "delta_probability": -0.6054745354328374
+        },
+        {
+         "feature": "dias_ultima_compra",
+         "value": 43.0,
+         "delta_probability": -0.600001890500552
+        },
+        {
+         "feature": "antiguedad",
+         "value": 52.0,
+         "delta_probability": -0.45786134922409216
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 20,
+       "probability": 0.24200392092759054,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 9.0,
+         "delta_probability": -0.7574722805461167
+        },
+        {
+         "feature": "reclamos",
+         "value": 2.0,
+         "delta_probability": -0.6135781032672896
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 4.0,
+         "delta_probability": 0.23626573806275006
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 21,
+       "probability": 0.2028841436478134,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "reclamos",
+         "value": 0.0,
+         "delta_probability": -0.7960215083388704
+        },
+        {
+         "feature": "antiguedad",
+         "value": 43.0,
+         "delta_probability": -0.3596009455651057
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 2.0,
+         "delta_probability": -0.2836486782948946
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 22,
+       "probability": 0.14947034814817253,
+       "risk": "BAJO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 8.0,
+         "delta_probability": -0.8138869058424194
+        },
+        {
+         "feature": "pagos_atrasados",
+         "value": 0.0,
+         "delta_probability": -0.663741484295127
+        },
+        {
+         "feature": "antiguedad",
+         "value": 4.0,
+         "delta_probability": 0.1434149728775122
+        }
+       ],
+       "out_of_domain": false
+      },
+      {
+       "index": 23,
+       "probability": 0.9999999465612044,
+       "risk": "ALTO",
+       "factors": [
+        {
+         "feature": "dias_ultima_compra",
+         "value": 95.0,
+         "delta_probability": 4.554371754950104e-06
+        },
+        {
+         "feature": "monto_promedio",
+         "value": 7800.0,
+         "delta_probability": 1.1281052432199346e-06
+        },
+        {
+         "feature": "compras_mensuales",
+         "value": 4.0,
+         "delta_probability": 4.274016597305419e-07
+        }
+       ],
+       "out_of_domain": true
+      }
+     ]
+    },
+    "brief": {
+     "customers": 24,
+     "high": 9,
+     "medium": 6,
+     "low": 9,
+     "out_of_domain": 1
+    }
+   },
+   {
+    "sequence": 4,
+    "timestamp": "2026-10-28T05:17:32.336713+00:00",
+    "sender": "predictivo",
+    "recipient": "llm",
+    "tool": "predictivo_llm_request",
+    "status": "ok",
+    "payload": {
+     "input": [
+      {
+       "index": 23,
+       "probability": 0.9999999465612044,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 14.0,
+        "compras_mensuales": 4.0,
+        "monto_promedio": 7800.0,
+        "reclamos": 5.0,
+        "dias_ultima_compra": 95.0,
+        "pagos_atrasados": 3.0
+       },
+       "allowed_actions": [
+        "review_data"
+       ]
+      },
+      {
+       "index": 4,
+       "probability": 0.9999969857319304,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 44.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4814.0,
+        "reclamos": 6.0,
+        "dias_ultima_compra": 103.0,
+        "pagos_atrasados": 4.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 0,
+       "probability": 0.9999873553634285,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 1.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4810.0,
+        "reclamos": 7.0,
+        "dias_ultima_compra": 54.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 6,
+       "probability": 0.998947609632551,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 19.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4226.0,
+        "reclamos": 5.0,
+        "dias_ultima_compra": 100.0,
+        "pagos_atrasados": 1.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 3,
+       "probability": 0.9954386673157471,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 12.0,
+        "compras_mensuales": 11.0,
+        "monto_promedio": 4645.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 25.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 7,
+       "probability": 0.9946896338096205,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 6.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4456.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 82.0,
+        "pagos_atrasados": 2.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 2,
+       "probability": 0.992398767920916,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 10.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4273.0,
+        "reclamos": 3.0,
+        "dias_ultima_compra": 51.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 1,
+       "probability": 0.9850427154668309,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 12.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4839.0,
+        "reclamos": 7.0,
+        "dias_ultima_compra": 16.0,
+        "pagos_atrasados": 3.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 5,
+       "probability": 0.9166277003511826,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 45.0,
+        "compras_mensuales": 14.0,
+        "monto_promedio": 4966.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 103.0,
+        "pagos_atrasados": 0.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      },
+      {
+       "index": 13,
+       "probability": 0.6707908381107195,
+       "risk": "MEDIO",
+       "observed": {
+        "antiguedad": 28.0,
+        "compras_mensuales": 12.0,
+        "monto_promedio": 1850.0,
+        "reclamos": 2.0,
+        "dias_ultima_compra": 55.0,
+        "pagos_atrasados": 4.0
+       },
+       "allowed_actions": [
+        "interpret_risk"
+       ]
+      }
+     ],
+     "identifiers_removed": true
+    },
+    "brief": {
+     "customers": 10,
+     "identifiers_removed": true
+    }
+   },
+   {
+    "sequence": 5,
+    "timestamp": "2026-10-28T05:17:34.708551+00:00",
+    "sender": "llm",
+    "recipient": "predictivo",
+    "tool": "predictivo_llm_result",
+    "status": "ok",
+    "payload": {
+     "choices": [
+      {
+       "index": 23,
+       "action": "review_data",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 1.0 y 5 reclamos, 3 pagos atrasados indican necesidad de revisar datos."
+      },
+      {
+       "index": 4,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 1.0, 44 meses de antigüedad y 6 reclamos respaldan interpretación de riesgo alto."
+      },
+      {
+       "index": 0,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 1.0, 1 mes de antigüedad y 7 reclamos justifican interpretar riesgo alto."
+      },
+      {
+       "index": 6,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 0.999, 19 meses y 5 reclamos indican riesgo alto."
+      },
+      {
+       "index": 3,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 0.995, 12 meses y 4 reclamos respaldan riesgo alto."
+      },
+      {
+       "index": 7,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 0.995, 6 meses, 4 reclamos y 2 pagos atrasados indican riesgo alto."
+      },
+      {
+       "index": 2,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 0.992, 10 meses, 3 reclamos y 5 pagos atrasados sugieren riesgo alto."
+      },
+      {
+       "index": 1,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 0.985, 12 meses, 7 reclamos y 3 pagos atrasados respaldan riesgo alto."
+      },
+      {
+       "index": 5,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 0.917, 45 meses, 4 reclamos y 0 pagos atrasados indican riesgo alto."
+      },
+      {
+       "index": 13,
+       "action": "interpret_risk",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Probabilidad 0.671, 28 meses, 2 reclamos y 4 pagos atrasados justifican riesgo medio."
+      }
+     ]
+    },
+    "brief": {
+     "choices": 10,
+     "actions": {
+      "review_data": 1,
+      "interpret_risk": 9
+     }
+    }
+   },
+   {
+    "sequence": 6,
+    "timestamp": "2026-10-28T05:17:34.708640+00:00",
+    "sender": "supervisor",
+    "recipient": "retencion",
+    "tool": "delegate_retention",
+    "status": "delegated",
+    "payload": {
+     "prediction_message": 3,
+     "task": "select grounded actions"
+    },
+    "brief": {
+     "prediction_message": 3,
+     "task": "select grounded actions"
+    }
+   },
+   {
+    "sequence": 7,
+    "timestamp": "2026-10-28T05:17:34.710924+00:00",
+    "sender": "retencion",
+    "recipient": "llm",
+    "tool": "structured_selection_request",
+    "status": "ok",
+    "payload": {
+     "input": [
+      {
+       "index": 23,
+       "probability": 0.9999999465612044,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 14.0,
+        "compras_mensuales": 4.0,
+        "monto_promedio": 7800.0,
+        "reclamos": 5.0,
+        "dias_ultima_compra": 95.0,
+        "pagos_atrasados": 3.0
+       },
+       "allowed_actions": [
+        "review_data"
+       ],
+       "action_impacts": {},
+       "predictive_review": {
+        "index": 23,
+        "action": "review_data",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 1.0 y 5 reclamos, 3 pagos atrasados indican necesidad de revisar datos."
+       }
+      },
+      {
+       "index": 4,
+       "probability": 0.9999969857319304,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 44.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4814.0,
+        "reclamos": 6.0,
+        "dias_ultima_compra": 103.0,
+        "pagos_atrasados": 4.0
+       },
+       "allowed_actions": [
+        "contact",
+        "reactivate",
+        "claims",
+        "payments"
+       ],
+       "action_impacts": {
+        "reactivate": 0.2094,
+        "claims": 0.0891,
+        "payments": 0.0006
+       },
+       "predictive_review": {
+        "index": 4,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 1.0, 44 meses de antigüedad y 6 reclamos respaldan interpretación de riesgo alto."
+       }
+      },
+      {
+       "index": 0,
+       "probability": 0.9999873553634285,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 1.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4810.0,
+        "reclamos": 7.0,
+        "dias_ultima_compra": 54.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "contact",
+        "claims",
+        "payments"
+       ],
+       "action_impacts": {
+        "claims": 0.2723,
+        "payments": 0.0451
+       },
+       "predictive_review": {
+        "index": 0,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 1.0, 1 mes de antigüedad y 7 reclamos justifican interpretar riesgo alto."
+       }
+      },
+      {
+       "index": 6,
+       "probability": 0.998947609632551,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 19.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4226.0,
+        "reclamos": 5.0,
+        "dias_ultima_compra": 100.0,
+        "pagos_atrasados": 1.0
+       },
+       "allowed_actions": [
+        "contact",
+        "reactivate",
+        "claims"
+       ],
+       "action_impacts": {
+        "reactivate": 0.9914,
+        "claims": 0.9807
+       },
+       "predictive_review": {
+        "index": 6,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 0.999, 19 meses y 5 reclamos indican riesgo alto."
+       }
+      },
+      {
+       "index": 3,
+       "probability": 0.9954386673157471,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 12.0,
+        "compras_mensuales": 11.0,
+        "monto_promedio": 4645.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 25.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "contact",
+        "claims",
+        "payments"
+       ],
+       "action_impacts": {
+        "claims": 0.9302,
+        "payments": 0.979
+       },
+       "predictive_review": {
+        "index": 3,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 0.995, 12 meses y 4 reclamos respaldan riesgo alto."
+       }
+      },
+      {
+       "index": 7,
+       "probability": 0.9946896338096205,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 6.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4456.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 82.0,
+        "pagos_atrasados": 2.0
+       },
+       "allowed_actions": [
+        "contact",
+        "reactivate",
+        "claims",
+        "payments"
+       ],
+       "action_impacts": {
+        "reactivate": 0.924,
+        "claims": 0.8948,
+        "payments": 0.2067
+       },
+       "predictive_review": {
+        "index": 7,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 0.995, 6 meses, 4 reclamos y 2 pagos atrasados indican riesgo alto."
+       }
+      },
+      {
+       "index": 2,
+       "probability": 0.992398767920916,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 10.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4273.0,
+        "reclamos": 3.0,
+        "dias_ultima_compra": 51.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "contact",
+        "claims",
+        "payments"
+       ],
+       "action_impacts": {
+        "claims": 0.8725,
+        "payments": 0.9856
+       },
+       "predictive_review": {
+        "index": 2,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 0.992, 10 meses, 3 reclamos y 5 pagos atrasados sugieren riesgo alto."
+       }
+      },
+      {
+       "index": 1,
+       "probability": 0.9850427154668309,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 12.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4839.0,
+        "reclamos": 7.0,
+        "dias_ultima_compra": 16.0,
+        "pagos_atrasados": 3.0
+       },
+       "allowed_actions": [
+        "contact",
+        "claims",
+        "payments"
+       ],
+       "action_impacts": {
+        "claims": 0.9836,
+        "payments": 0.8226
+       },
+       "predictive_review": {
+        "index": 1,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 0.985, 12 meses, 7 reclamos y 3 pagos atrasados respaldan riesgo alto."
+       }
+      },
+      {
+       "index": 5,
+       "probability": 0.9166277003511826,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 45.0,
+        "compras_mensuales": 14.0,
+        "monto_promedio": 4966.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 103.0,
+        "pagos_atrasados": 0.0
+       },
+       "allowed_actions": [
+        "contact",
+        "reactivate",
+        "claims"
+       ],
+       "action_impacts": {
+        "reactivate": 0.9165,
+        "claims": 0.914
+       },
+       "predictive_review": {
+        "index": 5,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 0.917, 45 meses, 4 reclamos y 0 pagos atrasados indican riesgo alto."
+       }
+      },
+      {
+       "index": 13,
+       "probability": 0.6707908381107195,
+       "risk": "MEDIO",
+       "observed": {
+        "antiguedad": 28.0,
+        "compras_mensuales": 12.0,
+        "monto_promedio": 1850.0,
+        "reclamos": 2.0,
+        "dias_ultima_compra": 55.0,
+        "pagos_atrasados": 4.0
+       },
+       "allowed_actions": [
+        "contact",
+        "payments"
+       ],
+       "action_impacts": {
+        "payments": 0.669
+       },
+       "predictive_review": {
+        "index": 13,
+        "action": "interpret_risk",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "reason": "Probabilidad 0.671, 28 meses, 2 reclamos y 4 pagos atrasados justifican riesgo medio."
+       }
+      }
+     ],
+     "identifiers_removed": true
+    },
+    "brief": {
+     "customers": 10,
+     "identifiers_removed": true
+    }
+   },
+   {
+    "sequence": 8,
+    "timestamp": "2026-10-28T05:17:37.001998+00:00",
+    "sender": "llm",
+    "recipient": "retencion",
+    "tool": "validated_json",
+    "status": "ok",
+    "payload": {
+     "choices": [
+      {
+       "index": 23,
+       "action": "review_data",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "reason": "Solo acción permitida es review_data según los datos."
+      },
+      {
+       "index": 4,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "reason": "Mayor impacto (0.209) entre acciones permitidas."
+      },
+      {
+       "index": 0,
+       "action": "claims",
+       "evidence": [
+        "reclamos"
+       ],
+       "reason": "Impacto más alto (0.272) para claims."
+      },
+      {
+       "index": 6,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "reason": "Impacto máximo (0.991) para reactivate."
+      },
+      {
+       "index": 3,
+       "action": "payments",
+       "evidence": [
+        "pagos_atrasados"
+       ],
+       "reason": "Impacto superior (0.979) para payments."
+      },
+      {
+       "index": 7,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "reason": "Impacto más alto (0.924) entre opciones."
+      },
+      {
+       "index": 2,
+       "action": "payments",
+       "evidence": [
+        "pagos_atrasados"
+       ],
+       "reason": "Impacto mayor (0.986) para payments."
+      },
+      {
+       "index": 1,
+       "action": "claims",
+       "evidence": [
+        "reclamos"
+       ],
+       "reason": "Impacto más alto (0.984) para claims."
+      },
+      {
+       "index": 5,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "reason": "Impacto máximo (0.916) para reactivate."
+      },
+      {
+       "index": 13,
+       "action": "payments",
+       "evidence": [
+        "pagos_atrasados"
+       ],
+       "reason": "Única acción permitida con impacto 0.669."
+      }
+     ]
+    },
+    "brief": {
+     "choices": 10,
+     "actions": {
+      "review_data": 1,
+      "reactivate": 4,
+      "claims": 2,
+      "payments": 3
+     }
+    }
+   },
+   {
+    "sequence": 9,
+    "timestamp": "2026-10-28T05:17:37.011128+00:00",
+    "sender": "retencion",
+    "recipient": "supervisor",
+    "tool": "recommendations",
+    "status": "ok",
+    "payload": {
+     "source": "mixed",
+     "outputs": [
+      {
+       "index": 0,
+       "action": "claims",
+       "evidence": [
+        "reclamos"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 1,
+       "action": "claims",
+       "evidence": [
+        "reclamos"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 2,
+       "action": "payments",
+       "evidence": [
+        "pagos_atrasados"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 3,
+       "action": "payments",
+       "evidence": [
+        "pagos_atrasados"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 4,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 5,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 6,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 7,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "priority": "URGENTE"
+      },
+      {
+       "index": 8,
+       "action": "payments",
+       "evidence": [
+        "pagos_atrasados"
+       ],
+       "priority": "ATENCION"
+      },
+      {
+       "index": 9,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "priority": "ATENCION"
+      },
+      {
+       "index": 10,
+       "action": "claims",
+       "evidence": [
+        "reclamos"
+       ],
+       "priority": "ATENCION"
+      },
+      {
+       "index": 11,
+       "action": "claims",
+       "evidence": [
+        "reclamos"
+       ],
+       "priority": "ATENCION"
+      },
+      {
+       "index": 12,
+       "action": "reactivate",
+       "evidence": [
+        "dias_ultima_compra"
+       ],
+       "priority": "ATENCION"
+      },
+      {
+       "index": 13,
+       "action": "payments",
+       "evidence": [
+        "pagos_atrasados"
+       ],
+       "priority": "ATENCION"
+      },
+      {
+       "index": 14,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 15,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 16,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 17,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 18,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 19,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 20,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 21,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 22,
+       "action": "monitor",
+       "evidence": [
+        "probability"
+       ],
+       "priority": "NORMAL"
+      },
+      {
+       "index": 23,
+       "action": "review_data",
+       "evidence": [
+        "probability",
+        "antiguedad",
+        "compras_mensuales",
+        "monto_promedio",
+        "reclamos",
+        "dias_ultima_compra",
+        "pagos_atrasados"
+       ],
+       "priority": "URGENTE"
+      }
+     ],
+     "correction": false
+    },
+    "brief": {
+     "customers": 24,
+     "source": "mixed",
+     "actions": {
+      "claims": 4,
+      "payments": 4,
+      "reactivate": 6,
+      "monitor": 9,
+      "review_data": 1
+     },
+     "correction": false
+    }
+   },
+   {
+    "sequence": 10,
+    "timestamp": "2026-10-28T05:17:37.018017+00:00",
+    "sender": "supervisor",
+    "recipient": "llm",
+    "tool": "supervisor_llm_request",
+    "status": "ok",
+    "payload": {
+     "input": [
+      {
+       "index": 23,
+       "probability": 0.9999999465612044,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 14.0,
+        "compras_mensuales": 4.0,
+        "monto_promedio": 7800.0,
+        "reclamos": 5.0,
+        "dias_ultima_compra": 95.0,
+        "pagos_atrasados": 3.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "review_data",
+        "evidence": [
+         "probability",
+         "antiguedad",
+         "compras_mensuales",
+         "monto_promedio",
+         "reclamos",
+         "dias_ultima_compra",
+         "pagos_atrasados"
+        ],
+        "steps": [
+         "Contrastar los valores con la fuente original.",
+         "Corregir errores o validar un modelo adecuado antes de decidir."
+        ]
+       },
+       "action_impacts": {}
+      },
+      {
+       "index": 4,
+       "probability": 0.9999969857319304,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 44.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4814.0,
+        "reclamos": 6.0,
+        "dias_ultima_compra": 103.0,
+        "pagos_atrasados": 4.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "reactivate",
+        "evidence": [
+         "dias_ultima_compra"
+        ],
+        "steps": [
+         "Comprobar la fecha de la última compra.",
+         "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+        ]
+       },
+       "action_impacts": {
+        "reactivate": 0.2094,
+        "claims": 0.0891,
+        "payments": 0.0006
+       }
+      },
+      {
+       "index": 0,
+       "probability": 0.9999873553634285,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 1.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4810.0,
+        "reclamos": 7.0,
+        "dias_ultima_compra": 54.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "claims",
+        "evidence": [
+         "reclamos"
+        ],
+        "steps": [
+         "Revisar el estado y detalle de los reclamos.",
+         "Acordar un responsable y verificar la resolución con el cliente."
+        ]
+       },
+       "action_impacts": {
+        "claims": 0.2723,
+        "payments": 0.0451
+       }
+      },
+      {
+       "index": 6,
+       "probability": 0.998947609632551,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 19.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4226.0,
+        "reclamos": 5.0,
+        "dias_ultima_compra": 100.0,
+        "pagos_atrasados": 1.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "reactivate",
+        "evidence": [
+         "dias_ultima_compra"
+        ],
+        "steps": [
+         "Comprobar la fecha de la última compra.",
+         "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+        ]
+       },
+       "action_impacts": {
+        "reactivate": 0.9914,
+        "claims": 0.9807
+       }
+      },
+      {
+       "index": 3,
+       "probability": 0.9954386673157471,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 12.0,
+        "compras_mensuales": 11.0,
+        "monto_promedio": 4645.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 25.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "payments",
+        "evidence": [
+         "pagos_atrasados"
+        ],
+        "steps": [
+         "Validar vencimientos y posibles errores de registro.",
+         "Conversar sobre alternativas autorizadas por la empresa."
+        ]
+       },
+       "action_impacts": {
+        "claims": 0.9302,
+        "payments": 0.979
+       }
+      },
+      {
+       "index": 7,
+       "probability": 0.9946896338096205,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 6.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4456.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 82.0,
+        "pagos_atrasados": 2.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "reactivate",
+        "evidence": [
+         "dias_ultima_compra"
+        ],
+        "steps": [
+         "Comprobar la fecha de la última compra.",
+         "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+        ]
+       },
+       "action_impacts": {
+        "reactivate": 0.924,
+        "claims": 0.8948,
+        "payments": 0.2067
+       }
+      },
+      {
+       "index": 2,
+       "probability": 0.992398767920916,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 10.0,
+        "compras_mensuales": 15.0,
+        "monto_promedio": 4273.0,
+        "reclamos": 3.0,
+        "dias_ultima_compra": 51.0,
+        "pagos_atrasados": 5.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "payments",
+        "evidence": [
+         "pagos_atrasados"
+        ],
+        "steps": [
+         "Validar vencimientos y posibles errores de registro.",
+         "Conversar sobre alternativas autorizadas por la empresa."
+        ]
+       },
+       "action_impacts": {
+        "claims": 0.8725,
+        "payments": 0.9856
+       }
+      },
+      {
+       "index": 1,
+       "probability": 0.9850427154668309,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 12.0,
+        "compras_mensuales": 13.0,
+        "monto_promedio": 4839.0,
+        "reclamos": 7.0,
+        "dias_ultima_compra": 16.0,
+        "pagos_atrasados": 3.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "claims",
+        "evidence": [
+         "reclamos"
+        ],
+        "steps": [
+         "Revisar el estado y detalle de los reclamos.",
+         "Acordar un responsable y verificar la resolución con el cliente."
+        ]
+       },
+       "action_impacts": {
+        "claims": 0.9836,
+        "payments": 0.8226
+       }
+      },
+      {
+       "index": 5,
+       "probability": 0.9166277003511826,
+       "risk": "ALTO",
+       "observed": {
+        "antiguedad": 45.0,
+        "compras_mensuales": 14.0,
+        "monto_promedio": 4966.0,
+        "reclamos": 4.0,
+        "dias_ultima_compra": 103.0,
+        "pagos_atrasados": 0.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "reactivate",
+        "evidence": [
+         "dias_ultima_compra"
+        ],
+        "steps": [
+         "Comprobar la fecha de la última compra.",
+         "Consultar si existen necesidades pendientes sin asumir el motivo de la inactividad."
+        ]
+       },
+       "action_impacts": {
+        "reactivate": 0.9165,
+        "claims": 0.914
+       }
+      },
+      {
+       "index": 13,
+       "probability": 0.6707908381107195,
+       "risk": "MEDIO",
+       "observed": {
+        "antiguedad": 28.0,
+        "compras_mensuales": 12.0,
+        "monto_promedio": 1850.0,
+        "reclamos": 2.0,
+        "dias_ultima_compra": 55.0,
+        "pagos_atrasados": 4.0
+       },
+       "allowed_actions": [
+        "approve_plan",
+        "request_review"
+       ],
+       "proposal": {
+        "action": "payments",
+        "evidence": [
+         "pagos_atrasados"
+        ],
+        "steps": [
+         "Validar vencimientos y posibles errores de registro.",
+         "Conversar sobre alternativas autorizadas por la empresa."
+        ]
+       },
+       "action_impacts": {
+        "payments": 0.669
+       }
+      }
+     ],
+     "identifiers_removed": true
+    },
+    "brief": {
+     "customers": 10,
+     "identifiers_removed": true
+    }
+   },
+   {
+    "sequence": 11,
+    "timestamp": "2026-10-28T05:17:39.943547+00:00",
+    "sender": "llm",
+    "recipient": "supervisor",
+    "tool": "supervisor_llm_result",
+    "status": "ok",
+    "payload": {
+     "choices": [
+      {
+       "index": 23,
+       "action": "request_review",
+       "evidence": [
+        "probability"
+       ],
+       "reason": "Acción propuesta no está entre las permitidas; datos fuera de dominio (probability=1.0)."
+      },
+      {
+       "index": 4,
+       "action": "approve_plan",
+       "evidence": [
+        "dias_ultima_compra",
+        "probability"
+       ],
+       "reason": "Dias_ultima_compra=103≥60 y impacto 0.209 es mayor que otros impactos."
+      },
+      {
+       "index": 0,
+       "action": "approve_plan",
+       "evidence": [
+        "reclamos",
+        "probability"
+       ],
+       "reason": "Reclamos=7≥3 y impacto 0.272 supera a los demás."
+      },
+      {
+       "index": 6,
+       "action": "approve_plan",
+       "evidence": [
+        "dias_ultima_compra",
+        "probability"
+       ],
+       "reason": "Dias_ultima_compra=100≥60 y impacto 0.991 es el mayor."
+      },
+      {
+       "index": 3,
+       "action": "approve_plan",
+       "evidence": [
+        "pagos_atrasados",
+        "probability"
+       ],
+       "reason": "Pagos_atrasados=5≥2 y impacto 0.979 es el más alto."
+      },
+      {
+       "index": 7,
+       "action": "approve_plan",
+       "evidence": [
+        "dias_ultima_compra",
+        "probability"
+       ],
+       "reason": "Dias_ultima_compra=82≥60 y impacto 0.924 lidera."
+      },
+      {
+       "index": 2,
+       "action": "approve_plan",
+       "evidence": [
+        "pagos_atrasados",
+        "probability"
+       ],
+       "reason": "Pagos_atrasados=5≥2 y impacto 0.986 es superior."
+      },
+      {
+       "index": 1,
+       "action": "approve_plan",
+       "evidence": [
+        "reclamos",
+        "probability"
+       ],
+       "reason": "Reclamos=7≥3 y impacto 0.984 domina."
+      },
+      {
+       "index": 5,
+       "action": "approve_plan",
+       "evidence": [
+        "dias_ultima_compra",
+        "probability"
+       ],
+       "reason": "Dias_ultima_compra=103≥60; impacto 0.916 casi igual al mayor (0.914)."
+      },
+      {
+       "index": 13,
+       "action": "approve_plan",
+       "evidence": [
+        "pagos_atrasados",
+        "probability"
+       ],
+       "reason": "Pagos_atrasados=4≥2 y impacto 0.669 es el único."
+      }
+     ]
+    },
+    "brief": {
+     "choices": 10,
+     "actions": {
+      "request_review": 1,
+      "approve_plan": 9
+     }
+    }
+   },
+   {
+    "sequence": 12,
+    "timestamp": "2026-10-28T05:17:39.943635+00:00",
+    "sender": "supervisor",
+    "recipient": "estratega",
+    "tool": "delegate_executive_summary",
+    "status": "delegated",
+    "payload": {
+     "task": "portfolio summary from verified aggregates"
+    },
+    "brief": {
+     "task": "portfolio summary from verified aggregates"
+    }
+   },
+   {
+    "sequence": 13,
+    "timestamp": "2026-10-28T05:17:39.945215+00:00",
+    "sender": "estratega",
+    "recipient": "llm",
+    "tool": "executive_summary_request",
+    "status": "ok",
+    "payload": {
+     "facts": {
+      "hechos_verificados": [
+       "Clientes analizados: 24.",
+       "Clientes con riesgo alto: 9 (38% de los clientes). Clientes con riesgo medio: 6.",
+       "Ingreso mensual total de la cartera: S/ 1,107,055.",
+       "Ingreso mensual en riesgo: S/ 735,887 (66% del ingreso mensual total).",
+       "Ingreso en riesgo anualizado (12 meses): S/ 8,830,650.",
+       "El 20% de clientes con mayor ingreso en riesgo concentra el 44% del ingreso mensual en riesgo.",
+       "Salud promedio de la cartera: 40 sobre 100.",
+       "Segmento Rescatar (alto valor y en riesgo): 9 clientes, con S/ 539,819 de ingreso mensual en riesgo.",
+       "Segmento Automatizar (menor valor y en riesgo): 6 clientes. Segmento Proteger (alto valor, estable): 3 clientes.",
+       "Registros fuera del dominio del modelo: 1.",
+       "Variables con mayor sensibilidad en el modelo: días desde la última compra, pagos atrasados."
+      ]
+     },
+     "identifiers_removed": true
+    },
+    "brief": {
+     "facts": 11
+    }
+   },
+   {
+    "sequence": 14,
+    "timestamp": "2026-10-28T05:17:41.055004+00:00",
+    "sender": "llm",
+    "recipient": "estratega",
+    "tool": "executive_summary_result",
+    "status": "ok",
+    "payload": {
+     "validated": true,
+     "numbers_checked": true
+    },
+    "brief": {
+     "validated": true,
+     "numbers_checked": true
+    }
+   },
+   {
+    "sequence": 15,
+    "timestamp": "2026-10-28T05:17:41.055076+00:00",
+    "sender": "estratega",
+    "recipient": "supervisor",
+    "tool": "executive_summary",
+    "status": "ok",
+    "payload": {
+     "source": "llm",
+     "headline": "S/ 735,887 de ingreso mensual en riesgo en 24 clientes"
+    },
+    "brief": {
+     "source": "llm",
+     "headline": "S/ 735,887 de ingreso mensual en riesgo en 24 clientes"
+    }
+   },
+   {
+    "sequence": 16,
+    "timestamp": "2026-10-28T05:17:41.055104+00:00",
+    "sender": "supervisor",
+    "recipient": "usuario",
+    "tool": "validated_report",
+    "status": "ok",
+    "payload": {
+     "approved_for_human_review": true,
+     "external_actions_executed": 0
+    },
+    "brief": {
+     "approved_for_human_review": true,
+     "external_actions_executed": 0
+    }
+   }
+  ],
+  "warnings": [
+   "El LLM revisa los 10 clientes de mayor probabilidad; los restantes usan reglas explícitas.",
+   "El supervisor LLM solicita revisión humana adicional para algunas propuestas; consulta sus observaciones antes de aceptar."
+  ],
+  "usage": [
+   {
+    "provider": "groq",
+    "model": "openai/gpt-oss-120b",
+    "rate_limit_wait_s": 0.0,
+    "input_tokens": 866,
+    "output_tokens": 1027,
+    "total_tokens": 1893,
+    "agent": "predictivo"
+   },
+   {
+    "provider": "groq",
+    "model": "openai/gpt-oss-120b",
+    "rate_limit_wait_s": 0.0,
+    "input_tokens": 1674,
+    "output_tokens": 898,
+    "total_tokens": 2572,
+    "agent": "retencion"
+   },
+   {
+    "provider": "groq",
+    "model": "openai/gpt-oss-120b",
+    "rate_limit_wait_s": 0.0,
+    "input_tokens": 1473,
+    "output_tokens": 1263,
+    "total_tokens": 2736,
+    "agent": "supervisor"
+   },
+   {
+    "provider": "groq",
+    "model": "openai/gpt-oss-120b",
+    "rate_limit_wait_s": 0.0,
+    "input_tokens": 603,
+    "output_tokens": 452,
+    "total_tokens": 1055,
+    "agent": "estratega"
+   }
+  ],
+  "llm_attempts": [
+   {
+    "agent": "predictivo",
+    "attempt": 1,
+    "status": "validated",
+    "elapsed_ms": 2371.87
+   },
+   {
+    "agent": "retencion",
+    "attempt": 1,
+    "status": "validated",
+    "elapsed_ms": 2290.04
+   },
+   {
+    "agent": "supervisor",
+    "attempt": 1,
+    "status": "validated",
+    "elapsed_ms": 2925.54
+   },
+   {
+    "agent": "estratega",
+    "attempt": 1,
+    "status": "validated",
+    "elapsed_ms": 1109.77
+   }
+  ],
+  "mode": "mixed",
+  "agent_llm": {
+   "predictivo": {
+    "status": "validated",
+    "checked_indices": [
+     23,
+     4,
+     0,
+     6,
+     3,
+     7,
+     2,
+     1,
+     5,
+     13
+    ],
+    "choices": [
+     {
+      "index": 23,
+      "action": "review_data",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 1.0 y 5 reclamos, 3 pagos atrasados indican necesidad de revisar datos."
+     },
+     {
+      "index": 4,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 1.0, 44 meses de antigüedad y 6 reclamos respaldan interpretación de riesgo alto."
+     },
+     {
+      "index": 0,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 1.0, 1 mes de antigüedad y 7 reclamos justifican interpretar riesgo alto."
+     },
+     {
+      "index": 6,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 0.999, 19 meses y 5 reclamos indican riesgo alto."
+     },
+     {
+      "index": 3,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 0.995, 12 meses y 4 reclamos respaldan riesgo alto."
+     },
+     {
+      "index": 7,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 0.995, 6 meses, 4 reclamos y 2 pagos atrasados indican riesgo alto."
+     },
+     {
+      "index": 2,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 0.992, 10 meses, 3 reclamos y 5 pagos atrasados sugieren riesgo alto."
+     },
+     {
+      "index": 1,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 0.985, 12 meses, 7 reclamos y 3 pagos atrasados respaldan riesgo alto."
+     },
+     {
+      "index": 5,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 0.917, 45 meses, 4 reclamos y 0 pagos atrasados indican riesgo alto."
+     },
+     {
+      "index": 13,
+      "action": "interpret_risk",
+      "evidence": [
+       "probability",
+       "antiguedad",
+       "compras_mensuales",
+       "monto_promedio",
+       "reclamos",
+       "dias_ultima_compra",
+       "pagos_atrasados"
+      ],
+      "reason": "Probabilidad 0.671, 28 meses, 2 reclamos y 4 pagos atrasados justifican riesgo medio."
+     }
+    ],
+    "usage": {
+     "provider": "groq",
+     "model": "openai/gpt-oss-120b",
+     "rate_limit_wait_s": 0.0,
+     "input_tokens": 866,
+     "output_tokens": 1027,
+     "total_tokens": 1893
+    }
+   },
+   "supervisor": {
+    "status": "validated",
+    "checked_indices": [
+     23,
+     4,
+     0,
+     6,
+     3,
+     7,
+     2,
+     1,
+     5,
+     13
+    ],
+    "choices": [
+     {
+      "index": 23,
+      "action": "request_review",
+      "evidence": [
+       "probability"
+      ],
+      "reason": "Acción propuesta no está entre las permitidas; datos fuera de dominio (probability=1.0)."
+     },
+     {
+      "index": 4,
+      "action": "approve_plan",
+      "evidence": [
+       "dias_ultima_compra",
+       "probability"
+      ],
+      "reason": "Dias_ultima_compra=103≥60 y impacto 0.209 es mayor que otros impactos."
+     },
+     {
+      "index": 0,
+      "action": "approve_plan",
+      "evidence": [
+       "reclamos",
+       "probability"
+      ],
+      "reason": "Reclamos=7≥3 y impacto 0.272 supera a los demás."
+     },
+     {
+      "index": 6,
+      "action": "approve_plan",
+      "evidence": [
+       "dias_ultima_compra",
+       "probability"
+      ],
+      "reason": "Dias_ultima_compra=100≥60 y impacto 0.991 es el mayor."
+     },
+     {
+      "index": 3,
+      "action": "approve_plan",
+      "evidence": [
+       "pagos_atrasados",
+       "probability"
+      ],
+      "reason": "Pagos_atrasados=5≥2 y impacto 0.979 es el más alto."
+     },
+     {
+      "index": 7,
+      "action": "approve_plan",
+      "evidence": [
+       "dias_ultima_compra",
+       "probability"
+      ],
+      "reason": "Dias_ultima_compra=82≥60 y impacto 0.924 lidera."
+     },
+     {
+      "index": 2,
+      "action": "approve_plan",
+      "evidence": [
+       "pagos_atrasados",
+       "probability"
+      ],
+      "reason": "Pagos_atrasados=5≥2 y impacto 0.986 es superior."
+     },
+     {
+      "index": 1,
+      "action": "approve_plan",
+      "evidence": [
+       "reclamos",
+       "probability"
+      ],
+      "reason": "Reclamos=7≥3 y impacto 0.984 domina."
+     },
+     {
+      "index": 5,
+      "action": "approve_plan",
+      "evidence": [
+       "dias_ultima_compra",
+       "probability"
+      ],
+      "reason": "Dias_ultima_compra=103≥60; impacto 0.916 casi igual al mayor (0.914)."
+     },
+     {
+      "index": 13,
+      "action": "approve_plan",
+      "evidence": [
+       "pagos_atrasados",
+       "probability"
+      ],
+      "reason": "Pagos_atrasados=4≥2 y impacto 0.669 es el único."
+     }
+    ],
+    "usage": {
+     "provider": "groq",
+     "model": "openai/gpt-oss-120b",
+     "rate_limit_wait_s": 0.0,
+     "input_tokens": 1473,
+     "output_tokens": 1263,
+     "total_tokens": 2736
+    }
+   },
+   "estratega": {
+    "status": "validated",
+    "usage": {
+     "provider": "groq",
+     "model": "openai/gpt-oss-120b",
+     "rate_limit_wait_s": 0.0,
+     "input_tokens": 603,
+     "output_tokens": 452,
+     "total_tokens": 1055
+    }
+   },
+   "retencion": {
+    "status": "validated",
+    "checked_indices": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     13,
+     23
+    ]
+   }
+  },
+  "executive": {
+   "headline": "S/ 735,887 de ingreso mensual en riesgo en 24 clientes",
+   "findings": [
+    "9 de 24 clientes (38%) están en riesgo alto y generan S/ 735,887 de ingreso mensual en riesgo, equivalente al 66% del ingreso mensual total.",
+    "El 20% de los clientes con mayor ingreso en riesgo concentra el 44% del ingreso mensual en riesgo.",
+    "La salud promedio de la cartera es 40 sobre 100, indicando vulnerabilidad."
+   ],
+   "actions": [
+    "Priorizar intervenciones en el segmento Rescatar (9 clientes, S/ 539,819 de ingreso mensual en riesgo).",
+    "Implementar medidas de automatización para el segmento Automatizar (6 clientes) para reducir su exposición.",
+    "Monitorear de cerca las variables críticas identificadas: días desde la última compra y pagos atrasados."
+   ],
+   "source": "llm",
+   "facts": {
+    "clientes": 24,
+    "clientes_riesgo_alto": 9,
+    "porcentaje_riesgo_alto": "38%",
+    "clientes_riesgo_medio": 6,
+    "ingreso_mensual_total": "S/ 1,107,055",
+    "ingreso_mensual_en_riesgo": "S/ 735,887",
+    "porcentaje_ingreso_en_riesgo": "66%",
+    "ingreso_anual_en_riesgo": "S/ 8,830,650",
+    "porcentaje_del_ingreso_en_riesgo_que_concentra_el_top20_de_clientes": "44%",
+    "salud_promedio": 40,
+    "cuadrante_rescatar": 9,
+    "ingreso_en_riesgo_rescatar": "S/ 539,819",
+    "cuadrante_automatizar": 6,
+    "cuadrante_proteger": 3,
+    "fuera_de_dominio": 1,
+    "variables_mas_sensibles": [
+     "días desde la última compra",
+     "pagos atrasados"
+    ],
+    "clientes_prioritarios": [
+     "CLI-005 (S/ 72,210/mes en riesgo)",
+     "CLI-006 (S/ 63,728/mes en riesgo)",
+     "CLI-003 (S/ 63,608/mes en riesgo)"
+    ]
+   }
+  },
+  "llm_report": {
+   "requested": true,
+   "provider": "groq",
+   "model": "openai/gpt-oss-120b",
+   "api": "chat/completions",
+   "status": "validated",
+   "attempts": [
+    {
+     "agent": "predictivo",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2371.87
+    },
+    {
+     "agent": "retencion",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2290.04
+    },
+    {
+     "agent": "supervisor",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2925.54
+    },
+    {
+     "agent": "estratega",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 1109.77
+    }
+   ],
+   "message": "El LLM respondió y su selección pasó los controles.",
+   "usage": [
+    {
+     "provider": "groq",
+     "model": "openai/gpt-oss-120b",
+     "rate_limit_wait_s": 0.0,
+     "input_tokens": 866,
+     "output_tokens": 1027,
+     "total_tokens": 1893,
+     "agent": "predictivo"
+    },
+    {
+     "provider": "groq",
+     "model": "openai/gpt-oss-120b",
+     "rate_limit_wait_s": 0.0,
+     "input_tokens": 1674,
+     "output_tokens": 898,
+     "total_tokens": 2572,
+     "agent": "retencion"
+    },
+    {
+     "provider": "groq",
+     "model": "openai/gpt-oss-120b",
+     "rate_limit_wait_s": 0.0,
+     "input_tokens": 1473,
+     "output_tokens": 1263,
+     "total_tokens": 2736,
+     "agent": "supervisor"
+    },
+    {
+     "provider": "groq",
+     "model": "openai/gpt-oss-120b",
+     "rate_limit_wait_s": 0.0,
+     "input_tokens": 603,
+     "output_tokens": 452,
+     "total_tokens": 1055,
+     "agent": "estratega"
+    }
+   ],
+   "identifiers_sent": false,
+   "selected_customers": 10
+  },
+  "analytics": {
+   "count": 24,
+   "mean_probability": 0.5967060810442527,
+   "median_probability": 0.6531604657651144,
+   "out_of_domain_count": 1,
+   "segments": [
+    {
+     "risk": "ALTO",
+     "count": 9,
+     "share": 0.375,
+     "mean_probability": 0.9870143757948235,
+     "monthly_revenue": 534879.0,
+     "revenue_at_risk": 527046.1041626954,
+     "means": {
+      "antiguedad": 18.11111111111111,
+      "compras_mensuales": 12.555555555555555,
+      "monto_promedio": 4981.0,
+      "reclamos": 5.0,
+      "dias_ultima_compra": 69.88888888888889,
+      "pagos_atrasados": 3.111111111111111
+     }
+    },
+    {
+     "risk": "MEDIO",
+     "count": 6,
+     "share": 0.25,
+     "mean_probability": 0.6039348686415172,
+     "monthly_revenue": 254214.0,
+     "revenue_at_risk": 153045.00406034803,
+     "means": {
+      "antiguedad": 17.166666666666668,
+      "compras_mensuales": 11.166666666666666,
+      "monto_promedio": 3903.5,
+      "reclamos": 3.0,
+      "dias_ultima_compra": 50.5,
+      "pagos_atrasados": 2.3333333333333335
+     }
+    },
+    {
+     "risk": "BAJO",
+     "count": 9,
+     "share": 0.375,
+     "mean_probability": 0.20157859456217214,
+     "monthly_revenue": 317962.0,
+     "revenue_at_risk": 55796.35771255217,
+     "means": {
+      "antiguedad": 32.111111111111114,
+      "compras_mensuales": 8.88888888888889,
+      "monto_promedio": 3994.777777777778,
+      "reclamos": 2.6666666666666665,
+      "dias_ultima_compra": 44.44444444444444,
+      "pagos_atrasados": 2.0
+     }
+    }
+   ],
+   "histogram": [
+    1,
+    3,
+    4,
+    1,
+    1,
+    1,
+    4,
+    0,
+    0,
+    9
+   ],
+   "sensitivities": [
+    {
+     "feature": "dias_ultima_compra",
+     "mean_absolute_delta": 0.3470959772957149
+    },
+    {
+     "feature": "pagos_atrasados",
+     "mean_absolute_delta": 0.3304996399635809
+    },
+    {
+     "feature": "reclamos",
+     "mean_absolute_delta": 0.327523723473449
+    },
+    {
+     "feature": "compras_mensuales",
+     "mean_absolute_delta": 0.242048192680553
+    },
+    {
+     "feature": "antiguedad",
+     "mean_absolute_delta": 0.135279958926325
+    },
+    {
+     "feature": "monto_promedio",
+     "mean_absolute_delta": 0.0660355050033966
+    }
+   ],
+   "priorities": [
+    {
+     "cliente_id": "CLI-005",
+     "risk": "ALTO",
+     "probability": 0.9999969857319304,
+     "monthly_volume_proxy": 72210.0,
+     "attention_score": 72209.7823397027
+    },
+    {
+     "cliente_id": "CLI-006",
+     "risk": "ALTO",
+     "probability": 0.9166277003511826,
+     "monthly_volume_proxy": 69524.0,
+     "attention_score": 63727.62423921562
+    },
+    {
+     "cliente_id": "CLI-003",
+     "risk": "ALTO",
+     "probability": 0.992398767920916,
+     "monthly_volume_proxy": 64095.0,
+     "attention_score": 63607.79902989111
+    },
+    {
+     "cliente_id": "CLI-007",
+     "risk": "ALTO",
+     "probability": 0.998947609632551,
+     "monthly_volume_proxy": 63390.0,
+     "attention_score": 63323.28897460741
+    },
+    {
+     "cliente_id": "CLI-001",
+     "risk": "ALTO",
+     "probability": 0.9999873553634285,
+     "monthly_volume_proxy": 62530.0,
+     "attention_score": 62529.20933087519
+    },
+    {
+     "cliente_id": "CLI-002",
+     "risk": "ALTO",
+     "probability": 0.9850427154668309,
+     "monthly_volume_proxy": 62907.0,
+     "attention_score": 61966.08210187193
+    },
+    {
+     "cliente_id": "CLI-008",
+     "risk": "ALTO",
+     "probability": 0.9946896338096205,
+     "monthly_volume_proxy": 57928.0,
+     "attention_score": 57620.381107323694
+    },
+    {
+     "cliente_id": "CLI-004",
+     "risk": "ALTO",
+     "probability": 0.9954386673157471,
+     "monthly_volume_proxy": 51095.0,
+     "attention_score": 50861.9387064981
+    },
+    {
+     "cliente_id": "CLI-009",
+     "risk": "MEDIO",
+     "probability": 0.6506931246553934,
+     "monthly_volume_proxy": 67578.0,
+     "attention_score": 43972.53997796217
+    },
+    {
+     "cliente_id": "CLI-010",
+     "risk": "MEDIO",
+     "probability": 0.6642550296745776,
+     "monthly_volume_proxy": 49740.0,
+     "attention_score": 33040.04517601349
+    }
+   ],
+   "revenue": {
+    "monthly_total": 1107055.0,
+    "monthly_at_risk": 735887.4659355956,
+    "annual_at_risk": 8830649.591227148,
+    "share_at_risk": 0.6647252990462041,
+    "top20_concentration": 0.44218405527615096,
+    "currency": "S/"
+   },
+   "health_score": 40,
+   "value_threshold": 50417.5,
+   "quadrants": {
+    "rescatar": {
+     "count": 9,
+     "revenue_at_risk": 539818.645807948,
+     "monthly_revenue": 571257.0,
+     "description": "Alto valor y riesgo medio/alto: atención personal inmediata."
+    },
+    "proteger": {
+     "count": 3,
+     "revenue_at_risk": 23831.238745792136,
+     "monthly_revenue": 173124.0,
+     "description": "Alto valor y riesgo bajo: cuidar la relación y explorar crecimiento."
+    },
+    "automatizar": {
+     "count": 6,
+     "revenue_at_risk": 140272.46241509542,
+     "monthly_revenue": 217836.0,
+     "description": "Valor menor y riesgo medio/alto: acciones de bajo costo y escalables."
+    },
+    "mantener": {
+     "count": 6,
+     "revenue_at_risk": 31965.118966760034,
+     "monthly_revenue": 144838.0,
+     "description": "Valor menor y riesgo bajo: seguimiento rutinario."
+    }
+   },
+   "customer_quadrants": {
+    "CLI-001": "rescatar",
+    "CLI-002": "rescatar",
+    "CLI-003": "rescatar",
+    "CLI-004": "rescatar",
+    "CLI-005": "rescatar",
+    "CLI-006": "rescatar",
+    "CLI-007": "rescatar",
+    "CLI-008": "rescatar",
+    "CLI-009": "rescatar",
+    "CLI-010": "automatizar",
+    "CLI-011": "automatizar",
+    "CLI-012": "automatizar",
+    "CLI-013": "automatizar",
+    "CLI-014": "automatizar",
+    "CLI-015": "proteger",
+    "CLI-016": "mantener",
+    "CLI-017": "mantener",
+    "CLI-018": "proteger",
+    "CLI-019": "proteger",
+    "CLI-020": "mantener",
+    "CLI-021": "mantener",
+    "CLI-022": "mantener",
+    "CLI-023": "mantener",
+    "CLI-024": "automatizar"
+   },
+   "revenue_definition": "Ingreso mensual = compras mensuales × monto promedio. Ingreso en riesgo = probabilidad × ingreso mensual. Estimación del modelo sintético; no es una pérdida contable ni auditada.",
+   "priority_definition": "Ingreso mensual en riesgo (probabilidad × compras × monto). Orienta el orden de atención; excluye datos fuera del dominio y riesgo bajo.",
+   "sensitivity_definition": "Media del cambio absoluto al sustituir cada variable por su media de entrenamiento. Solo clientes dentro del dominio; no es causalidad ni importancia global del modelo."
+  },
+  "agent_report": {
+   "predictive": {
+    "count": 24,
+    "out_of_domain": 1
+   },
+   "retention": {
+    "llm_count": 10,
+    "changed_vs_rules": 0,
+    "rules_count": 14,
+    "actions": {
+     "contact": 0,
+     "monitor": 9,
+     "reactivate": 6,
+     "claims": 4,
+     "payments": 4,
+     "review_data": 1
+    }
+   },
+   "supervisor": {
+    "validated": true,
+    "checks": [
+     "Correspondencia de clientes",
+     "Acciones compatibles con indicadores",
+     "Evidencia verificable",
+     "Simulación what-if recalculada",
+     "Plan de seguimiento y revisión humana"
+    ],
+    "corrections": 0
+   },
+   "strategist": {
+    "source": "llm",
+    "llm_status": "validated"
+   }
+  },
+  "elapsed_ms": 8749.8,
+  "model_sha256": "bf9b63beea3d7565ab920e6d8459ff3de627609a207c2b8bd3c58c84eca77ca8",
+  "demo": true,
+  "ephemeral": true,
+  "summary": {
+   "customers": 24,
+   "high": 9,
+   "medium": 6,
+   "low": 9
+  }
+ }
+}

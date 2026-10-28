@@ -1,0 +1,282 @@
+{
+ "base_url": "https://churntrackai.vercel.app",
+ "collected_utc": "2026-10-28T05-17Z",
+ "health": {
+  "status_code": 200,
+  "body": {
+   "status": "ok",
+   "model": "loaded",
+   "database": "ok",
+   "version": "2.2.1"
+  },
+  "seconds": 0.743
+ },
+ "config": {
+  "hosting": "vercel",
+  "llm_provider": "groq",
+  "llm_model": "openai/gpt-oss-120b",
+  "llm_configured": true,
+  "max_llm_customers": 10,
+  "agents": [
+   "supervisor",
+   "predictivo",
+   "retencion",
+   "estratega"
+  ]
+ },
+ "timing_no_llm": {
+  "demo24_sequential_s": [
+   0.604,
+   0.471,
+   0.586,
+   0.446,
+   0.702,
+   0.486,
+   0.463,
+   0.476,
+   0.462,
+   0.55
+  ],
+  "demo24_mean_s": 0.524,
+  "concurrent_users": 5,
+  "concurrent_status": [
+   200,
+   200,
+   200,
+   200,
+   200
+  ],
+  "concurrent_mean_s": 0.495,
+  "demo300_s": 1.417,
+  "demo300_status": 200
+ },
+ "llm_runs": [
+  {
+   "seconds": 9.28,
+   "messages": 16,
+   "first_message_s": 0.504,
+   "last_message_s": 9.271,
+   "agent_llm": {
+    "predictivo": "validated",
+    "supervisor": "validated",
+    "estratega": "validated",
+    "retencion": "validated"
+   },
+   "attempts": [
+    {
+     "agent": "predictivo",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2371.87
+    },
+    {
+     "agent": "retencion",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2290.04
+    },
+    {
+     "agent": "supervisor",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2925.54
+    },
+    {
+     "agent": "estratega",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 1109.77
+    }
+   ],
+   "tokens": 8256,
+   "input_tokens": 4616,
+   "output_tokens": 3640,
+   "cost_usd": 0.002876,
+   "llm_recommendations": 10,
+   "reasons_kept": 10,
+   "changed_vs_rules": 0,
+   "supervisor_approve": 9,
+   "supervisor_review": 1,
+   "executive_source": "llm",
+   "mode": "mixed"
+  },
+  {
+   "seconds": 9.93,
+   "messages": 16,
+   "first_message_s": 0.451,
+   "last_message_s": 9.925,
+   "agent_llm": {
+    "predictivo": "validated",
+    "supervisor": "validated",
+    "estratega": "validated",
+    "retencion": "validated"
+   },
+   "attempts": [
+    {
+     "agent": "predictivo",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2895.17
+    },
+    {
+     "agent": "retencion",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2539.14
+    },
+    {
+     "agent": "supervisor",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2836.09
+    },
+    {
+     "agent": "estratega",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 1087.16
+    }
+   ],
+   "tokens": 8038,
+   "input_tokens": 4584,
+   "output_tokens": 3454,
+   "cost_usd": 0.00276,
+   "llm_recommendations": 10,
+   "reasons_kept": 10,
+   "changed_vs_rules": 0,
+   "supervisor_approve": 7,
+   "supervisor_review": 3,
+   "executive_source": "llm",
+   "mode": "mixed"
+  },
+  {
+   "seconds": 10.73,
+   "messages": 16,
+   "first_message_s": 0.458,
+   "last_message_s": 10.722,
+   "agent_llm": {
+    "predictivo": "validated",
+    "supervisor": "validated",
+    "estratega": "validated",
+    "retencion": "validated"
+   },
+   "attempts": [
+    {
+     "agent": "predictivo",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 2365.76
+    },
+    {
+     "agent": "retencion",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 3569.02
+    },
+    {
+     "agent": "supervisor",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 3233.53
+    },
+    {
+     "agent": "estratega",
+     "attempt": 1,
+     "status": "validated",
+     "elapsed_ms": 969.58
+    }
+   ],
+   "tokens": 8322,
+   "input_tokens": 4561,
+   "output_tokens": 3761,
+   "cost_usd": 0.002941,
+   "llm_recommendations": 10,
+   "reasons_kept": 10,
+   "changed_vs_rules": 0,
+   "supervisor_approve": 9,
+   "supervisor_review": 1,
+   "executive_source": "llm",
+   "mode": "mixed"
+  }
+ ],
+ "metrics": {
+  "llm_runs": 3,
+  "runs_all_agents_validated": 3,
+  "stage_success_rate": 1.0,
+  "mean_llm_run_s": 9.98,
+  "mean_tokens": 8205,
+  "mean_cost_usd_per_run": 0.002859,
+  "cost_usd_per_100_runs": 0.2859,
+  "test_cases_passed": "8/8"
+ },
+ "test_matrix": [
+  {
+   "id": "P1",
+   "entrada": "Cliente con 6 reclamos, 95 días sin compra y 4 pagos atrasados, sin LLM",
+   "esperado": "Riesgo ALTO y una acción sobre una palanca medible (reclamos, pagos o recencia) con simulación",
+   "real": "ALTO 1.000; acción reactivate; reducción 0.001",
+   "agentes": "Supervisor, Predictivo, Retención, Estratega",
+   "paso": true
+  },
+  {
+   "id": "P2",
+   "entrada": "Cliente fiel (48 meses, 12 compras, 0 reclamos)",
+   "esperado": "Riesgo BAJO y acción de seguimiento",
+   "real": "BAJO 0.000; acción monitor",
+   "agentes": "Predictivo, Retención",
+   "paso": true
+  },
+  {
+   "id": "P3",
+   "entrada": "CSV con código inválido y pagos negativos",
+   "esperado": "Rechazo 422 con errores por fila en español",
+   "real": "422: Fila 2, cliente_id: solo admite letras, números, guion y guion bajo · Fila 2, pagos_atrasados: debe ser mayor o igual que 0",
+   "agentes": "API (validación previa a los agentes)",
+   "paso": true
+  },
+  {
+   "id": "P4",
+   "entrada": "Intento de inyección de instrucciones en el código de cliente",
+   "esperado": "Rechazo 422: el texto libre no llega a los agentes ni al LLM",
+   "real": "422",
+   "agentes": "API (contrato de entrada)",
+   "paso": true
+  },
+  {
+   "id": "P5",
+   "entrada": "Solicitar LLM sin consentimiento",
+   "esperado": "Rechazo 422: no se envían datos al proveedor sin autorización",
+   "real": "422",
+   "agentes": "API",
+   "paso": true
+  },
+  {
+   "id": "P6",
+   "entrada": "Simulación what-if del cliente de P1",
+   "esperado": "Cada palanca reduce o mantiene la probabilidad",
+   "real": {
+    "claims": 1.0,
+    "payments": 1.0,
+    "reactivate": 0.999
+   },
+   "agentes": "Herramienta del agente de Retención",
+   "paso": true
+  },
+  {
+   "id": "P7",
+   "entrada": "Cartera de 24 con LLM (incluye CLI-024 fuera de dominio)",
+   "esperado": "Los 4 agentes validan su etapa con el LLM; CLI-024 recibe \"validar datos\"",
+   "real": "{'predictivo': 'validated', 'supervisor': 'validated', 'estratega': 'validated', 'retencion': 'validated'}; CLI-024 → review_data, supervisor request_review",
+   "agentes": "Supervisor, Predictivo, Retención, Estratega + LLM",
+   "paso": true
+  },
+  {
+   "id": "P8",
+   "entrada": "Resumen ejecutivo del Estratega con LLM",
+   "esperado": "Resumen aceptado solo si todas sus cifras existen en los hechos verificados",
+   "real": "fuente llm: S/ 735,887 de ingreso mensual en riesgo en 24 clientes",
+   "agentes": "Estratega + Supervisor",
+   "paso": true
+  }
+ ]
+}

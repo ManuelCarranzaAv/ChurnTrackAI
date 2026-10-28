@@ -80,3 +80,25 @@ def test_supervisor_reviews_with_what_if_evidence(client):
     assert sup['proposal']['action'] in sup['action_impacts'] or sup['proposal']['action'] in ('contact','monitor')
     assert set(sup['action_impacts'])<={'claims','payments','reactivate'} and sup['action_impacts']
     assert 'action_impacts' not in seen['predictivo'][0]
+
+def test_llm_reasons_are_kept_only_with_real_numbers(client):
+    from backend.agents import checked_reason
+    from backend.schemas import Customer
+    p=client.app.state.supervisor.model.predict(Customer(**{**ROW,'reclamos':6}))
+    assert checked_reason('Tiene 6 reclamos y 30 días sin comprar.',p)=='Tiene 6 reclamos y 30 días sin comprar.'
+    assert checked_reason('Tiene 45 reclamos.',p)==''
+    assert checked_reason(f'Probabilidad {p.probability*100:.0f}% con 6 reclamos.',p)
+    class Reasoned(ThreeStageProvider):
+        def result(self,payload,stage='retencion'):
+            r=super().result(payload,stage)
+            for c in r.choices: c.reason='Inventado: 999 reclamos.' if stage=='supervisor' else 'Elegido por 2 reclamos.'
+            return r
+    client.app.state.supervisor.retention.provider=Reasoned()
+    run=client.post('/api/public/analyze',json={'customers':[ROW],'use_llm':True,'consent_external_processing':True}).json()
+    assert run['recommendations'][0]['llm_reason']=='Elegido por 2 reclamos.'
+    assert run['recommendations'][0]['supervisor_review']['reason']==''
+
+def test_provider_schema_requires_reason():
+    from backend.llm import provider_schema
+    choice=provider_schema('retencion')['$defs']['LLMChoice']
+    assert choice['required']==['index','action','evidence','reason'] and choice['additionalProperties'] is False

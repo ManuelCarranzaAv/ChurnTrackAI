@@ -104,7 +104,7 @@ const SOURCES=[
  ['single','user','Un cliente','Ingresa sus indicadores a mano.']
 ];
 function viewStart(){
- const cfg=S.config||{},llmOk=cfg.llm_configured,batch=cfg.max_llm_customers||12;
+ const cfg=S.config||{},llmOk=cfg.llm_configured,batch=cfg.max_llm_customers||10;
  $('view').innerHTML=`
  <div class="start">
   <div>
@@ -124,7 +124,7 @@ function viewStart(){
      <label class="consent" id="consent-row" ${S.llm&&llmOk?'':'hidden'}><input type="checkbox" id="consent" ${S.consent?'checked':''}> Autorizo enviar estos indicadores anónimos al proveedor LLM para este análisis.</label>
     </div>
    </div>
-   <div class="run-bar"><p class="muted small">El análisis es temporal: no se guarda en el servidor.</p><button class="btn primary lg" id="run-btn">${icon('play','s')}Iniciar agentes</button></div>
+   <div class="run-bar"><p class="muted small">El análisis es temporal: no se guarda en el servidor.</p><button class="btn cta lg" id="run-btn">${icon('play','s')}Iniciar agentes</button></div>
   </div>
   <aside class="card side-card"><h2>Así trabajan los agentes</h2><p class="muted small" style="margin-top:4px">El Supervisor delega, valida y decide si cada salida pasa. Nada se ejecuta sin tu aprobación.</p>
    <div class="flow">${ORDER.map(k=>`<div class="flow-item">${av(k)}<div><b>${NAMES[k]}</b><p>${AGENTS[k].role}</p><div class="llm-use">${icon('spark','s')}${AGENTS[k].llm}</div></div></div>`).join('')}
@@ -261,8 +261,9 @@ function renderRoom(){
  ${finished&&r?`<div class="card done-card mt"><div class="stats"><div><b>${r.trace.length}</b>mensajes entre agentes</div><div><b>${llmOk}/4</b>agentes con LLM validado</div><div><b>${rep.retention.changed_vs_rules||0}</b>decisiones que el LLM cambió</div><div><b>${r.recommendations.filter(x=>x.supervisor_review?.action==='request_review').length}</b>revisiones humanas pedidas</div><div><b>${r.status==='completed'?'Sí':'No'}</b>informe validado</div></div>
   <div class="actions"><a class="btn" href="#/agentes">${icon('shield','s')}Auditoría</a><a class="btn primary" href="#/resumen">Ver resultados ${icon('arrow','s')}</a></div></div>`:''}
  ${finished&&L.error?`<div class="card mt" style="border-color:var(--hi)"><b>No se pudo completar.</b> <span class="ink2">${esc(L.error)}</span> <a class="btn sm" href="#/inicio" style="margin-left:8px">Volver</a></div>`:''}
+ <p class="sr-only" role="status" aria-atomic="true">${finished?'Ejecución terminada.':`${L.shown.length} mensajes. ${ORDER.filter(k=>st[k].state==='llm').map(k=>NAMES[k]+' consulta al LLM').join('. ')}`}</p>
  <article class="card mt"><div class="card-head"><div><h2>Conversación entre agentes</h2><p>Cada línea es un mensaje real del estado compartido, explicado en lenguaje natural. Abre el detalle para ver el contenido técnico.</p></div>${!finished?`<button class="btn sm" id="skip">Mostrar todo</button>`:''}</div>
-  <div class="feed" aria-live="polite">${L.shown.map((m,i)=>{
+  <div class="feed">${L.shown.map((m,i)=>{
    const isLLM=m.sender==='llm'||m.recipient==='llm',err=m.status==='error';
    const full=r?.trace?.[m.sequence-1];
    return `<div class="ev ${err?'err':''}">${av(m.sender,true)}<div><div class="who"><b>${NAMES[m.sender]||esc(m.sender)}</b>→ ${NAMES[m.recipient]||esc(m.recipient)} <span class="tool">${esc(m.tool)}</span>${isLLM?`<span class="badge llm plain">${icon('spark','s')}LLM</span>`:''}${m.status==='retry'?'<span class="badge warn plain">reintento</span>':''}${err?'<span class="badge fail plain">error</span>':''}</div>
@@ -389,13 +390,13 @@ function openCustomer(id){
  const ev=e=>(e||[]).map(x=>(LABELS[x]||x).toLowerCase()).join(', ');
  const predictive=`<p>Probabilidad de abandono <b>${pct(p.probability,1)}</b> (${RISK[p.risk].toLowerCase()}). ${pushes.length?`Lo que más la empuja: ${pushes.map(f=>`${LABELS[f.feature].toLowerCase()} (+${pp(f.delta_probability)})`).join(' y ')}.`:p.probability>.98?'La probabilidad está saturada: varias señales actúan juntas y ninguna sola la mueve.':'Ningún indicador aislado la eleva de forma marcada.'}</p>
   ${p.warnings.length?`<p class="note">${icon('alert','s')} ${esc(p.warnings.join(' · '))}</p>`:''}
-  ${interp?`<p class="note">${icon('spark','s')} LLM: ${interp.action==='review_data'?'pide validar los datos antes de actuar':'confirma la lectura del riesgo'} citando ${esc(ev(interp.evidence))}.</p>`:''}
+  ${interp?`<p class="note">${icon('spark','s')} LLM: ${interp.action==='review_data'?'pide validar los datos antes de actuar':'confirma la lectura del riesgo'} citando ${esc(ev(interp.evidence))}.</p>`:''}${interp?.reason?`<blockquote class="why">${icon('spark','s')}<span>«${esc(interp?.reason)}»</span></blockquote>`:''}
   <details style="margin-top:8px"><summary class="small muted">Ver los 6 factores</summary>${factorsHtml(p)}</details>`;
  const retention=r?`<p>Propongo <b>${ACTION_LABELS[r.action]||esc(r.action)}</b> · ${esc(r.owner)}, ${esc(r.timeframe).toLowerCase()}.</p>
   ${sim?`<div class="sim"><span>Si se logra: ${esc(sim.scenario)}</span><span class="num">${pct(sim.risk_reduction+sim.probability_after,1)} <span class="arrow">→</span> <b>${pct(sim.probability_after,1)}</b></span><span class="badge ok plain">−${pp(sim.risk_reduction)}</span><span class="muted">${money(sim.revenue_protected_monthly)}/mes protegidos</span></div>`:'<p class="note">Acción sin palanca medible en el modelo (contacto o seguimiento): no estimo su impacto.</p>'}
-  ${r.source==='llm'?(changed(r)?`<div class="changed">${icon('spark','s')} Elegido con LLM. Las reglas habrían propuesto «${ACTION_LABELS[r.rule_baseline]}».</div>`:`<p class="note">${icon('spark','s')} El LLM confirmó la acción que proponían las reglas.</p>`):'<p class="note">Elegido por reglas explícitas.</p>'}
+  ${r.source==='llm'?(changed(r)?`<div class="changed">${icon('spark','s')} Elegido con LLM. Las reglas habrían propuesto «${ACTION_LABELS[r.rule_baseline]}».</div>`:`<p class="note">${icon('spark','s')} El LLM confirmó la acción que proponían las reglas.</p>`):'<p class="note">Elegido por reglas explícitas.</p>'}${r.llm_reason?`<blockquote class="why">${icon('spark','s')}<span>«${esc(r.llm_reason)}»</span></blockquote>`:''}
   <details style="margin-top:8px"><summary class="small muted">Pasos y verificación</summary><ol class="steps">${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol><p class="small" style="margin-top:6px"><span class="muted">Éxito si:</span> ${esc(r.success_check)}</p></details>`:'';
- const supervisor=`<p>${sup?(sup.action==='approve_plan'?'Revisé la propuesta con el LLM y es coherente con los indicadores.':'<b>Pido revisión humana</b> antes de aceptar: la propuesta necesita contexto adicional.'):'Verifiqué con controles deterministas: acción permitida, evidencia existente, plan del playbook y simulación recalculada.'}</p>${sup?`<p class="note">Evidencia revisada: ${esc(ev(sup.evidence))}.</p>`:''}`;
+ const supervisor=`<p>${sup?(sup.action==='approve_plan'?'Revisé la propuesta con el LLM y es coherente con los indicadores.':'<b>Pido revisión humana</b> antes de aceptar: la propuesta necesita contexto adicional.'):'Verifiqué con controles deterministas: acción permitida, evidencia existente, plan del playbook y simulación recalculada.'}</p>${sup?`<p class="note">Evidencia revisada: ${esc(ev(sup.evidence))}.</p>`:''}${sup?.reason?`<blockquote class="why">${icon('spark','s')}<span>«${esc(sup?.reason)}»</span></blockquote>`:''}`;
  d.innerHTML=`<div class="drawer-top"><div><div class="kicker">Ficha de cliente</div><h2 id="drawer-title">${esc(p.cliente_id)}</h2><div class="actions" style="margin-top:8px">${riskBadge(p.risk)}${quadBadge(p.quadrant)}${r?prioBadge(r.priority):''}</div></div><button class="icon-btn" id="drawer-close" aria-label="Cerrar">${icon('x')}</button></div>
  <div class="facts"><div class="fact"><span>Probabilidad</span><b>${pct(p.probability,1)}</b></div><div class="fact"><span>Salud</span><b>${p.health_score}/100</b></div><div class="fact"><span>Ingreso/mes</span><b>${money(p.monthly_revenue,true)}</b></div><div class="fact"><span>En riesgo/mes</span><b>${money(p.revenue_at_risk,true)}</b></div></div>
  <h3 style="margin:20px 0 8px">Conversación de los agentes</h3>
@@ -436,7 +437,7 @@ function viewAgents(){
  <div class="page-head"><div><div class="kicker">${r.trace.length} mensajes · ${dur(r.elapsed_ms)} · ${llm.attempts.length} llamadas al LLM</div><h1>Auditoría de agentes</h1><p>Qué aportó cada agente, cuánto costó y qué controles se aplicaron. El LLM solo elige entre opciones permitidas y cada respuesta se valida antes de usarse.</p></div>
   <div class="actions"><button class="btn" id="replay">${icon('play','s')}Reproducir ejecución</button><button class="btn" id="dl-trace">${icon('download','s')}Traza JSON</button></div></div>
  <div class="metric-row">
-  <div class="metric"><span>Clientes revisados por LLM</span><b>${rep.retention.llm_count}</b><small>de ${r.predictions.length} (máx. ${S.config?.max_llm_customers||12})</small></div>
+  <div class="metric"><span>Clientes revisados por LLM</span><b>${rep.retention.llm_count}</b><small>de ${r.predictions.length} (máx. ${S.config?.max_llm_customers||10})</small></div>
   <div class="metric"><span>Decisiones que el LLM cambió</span><b>${rep.retention.changed_vs_rules||0}</b><small>frente a las reglas</small></div>
   <div class="metric"><span>Segundas opiniones</span><b>${reviews}</b><small>${flags} piden revisión humana</small></div>
   <div class="metric"><span>Correcciones del Supervisor</span><b>${rep.supervisor.corrections}</b><small>salidas rehechas</small></div>
@@ -543,7 +544,7 @@ async function viewModel(){
    <li><b>Explicación local</b>: cambio de probabilidad al llevar cada indicador a su media de entrenamiento.</li>
    <li><b>Valor de negocio</b>: ingreso mensual = compras × monto; ingreso en riesgo = probabilidad × ingreso; salud = 100 × (1 − probabilidad).</li>
    <li><b>What-if</b>: re-ejecuta la red con la palanca de cada acción resuelta (reclamos, pagos, recencia).</li>
-   <li><b>Cuatro agentes</b> con estado compartido y mensajes trazables, transmitidos en vivo. LLM: ${esc(S.config?.llm_provider||'—')} · ${esc(S.config?.llm_model||'—')}, sobre los ${S.config?.max_llm_customers||12} clientes de mayor riesgo.</li></ul></article>
+   <li><b>Cuatro agentes</b> con estado compartido y mensajes trazables, transmitidos en vivo. LLM: ${esc(S.config?.llm_provider||'—')} · ${esc(S.config?.llm_model||'—')}, sobre los ${S.config?.max_llm_customers||10} clientes de mayor riesgo.</li></ul></article>
   <article class="card prose"><h2>Barreras de seguridad</h2>
    <ul><li>El LLM nunca cambia probabilidades: elige entre acciones permitidas, con salida JSON restringida por esquema.</li>
    <li>Cada respuesta se valida (índices completos, acción permitida, evidencia existente); si falla, se usan reglas y se informa.</li>

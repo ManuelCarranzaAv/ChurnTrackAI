@@ -65,6 +65,7 @@ class Recommendation(StrictModel):
     success_check: str = ''
     simulation: dict | None = None
     rule_baseline: str = ''
+    llm_reason: str = ''
     decision: Literal['pending', 'approved', 'rejected'] = 'pending'
 
 class Message(StrictModel):
@@ -83,6 +84,7 @@ class LLMChoice(StrictModel):
     index: int = Field(ge=0)
     action: str
     evidence: list[str] = Field(min_length=1, max_length=7)
+    reason: str = Field(default='', max_length=240)
 
 class LLMResponse(StrictModel):
     choices: list[LLMChoice] = Field(min_length=1, max_length=20)

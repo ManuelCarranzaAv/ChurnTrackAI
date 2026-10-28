@@ -7,6 +7,14 @@ services:
     envVars:
       - key: APP_API_KEY
         generateValue: true
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: LLM_MAX_CUSTOMERS
+        value: "10"
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL

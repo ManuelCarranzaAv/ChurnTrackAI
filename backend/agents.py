@@ -120,9 +120,22 @@ def brief(tool, payload):
         return {'facts':len(payload['facts'].get('hechos_verificados',payload['facts']))}
     return {k:v for k,v in payload.items() if isinstance(v,(str,int,float,bool))}
 
+def checked_reason(reason, p):
+    """Keep an LLM justification only if every number it cites exists in that customer's data."""
+    reason = ' '.join((reason or '').split())[:240]
+    if not reason:
+        return ''
+    allowed = {str(i) for i in range(11)} | {'60', '100', '0.10', '0,10'}
+    for value in p.observed.values():
+        allowed |= {f'{value:g}', f'{value:,.0f}', f'{value:.0f}', f'{value:,.2f}'}
+    prob = p.probability*100
+    allowed |= {f'{prob:.0f}', f'{prob:.1f}', f'{prob:.1f}'.replace('.', ','), f'{p.probability:.2f}', f'{p.probability:.3f}', f'{p.probability:.1f}'}
+    cited = {t.rstrip('.,') for t in NUMBER.findall(reason)}
+    return reason if cited <= allowed else ''
+
 def llm_batch():
-    # Free LLM tiers limit tokens per minute; 12 customers ≈ 6.5k tokens across four agents.
-    return max(1, min(20, int(os.getenv('LLM_MAX_CUSTOMERS', '12'))))
+    # Free LLM tiers allow ~8k tokens per minute; 10 customers with justifications fit one analysis.
+    return max(1, min(20, int(os.getenv('LLM_MAX_CUSTOMERS', '10'))))
 
 async def review_stage(stage, request, state, provider, store, model=None):
     report = {'status':'not_called','checked_indices':[],'choices':[]}
@@ -158,7 +171,8 @@ async def review_stage(stage, request, state, provider, store, model=None):
         for c in response.choices:
             if c.action not in by_index[c.index]['allowed_actions'] or not set(c.evidence).issubset({*state.predictions[c.index].observed,'probability'}):
                 raise ProviderError('UNSUPPORTED_RECOMMENDATION')
-        report.update(status='validated',checked_indices=indices,choices=[c.model_dump() for c in response.choices],usage=usage)
+        choices = [{**c.model_dump(),'reason':checked_reason(c.reason,state.predictions[c.index])} for c in response.choices]
+        report.update(status='validated',checked_indices=indices,choices=choices,usage=usage)
         state.send('llm',stage,stage+'_llm_result',response.model_dump())
         state.llm_attempts.append({'agent':stage,'attempt':1,'status':'validated','elapsed_ms':round((time.perf_counter()-start)*1000,2)})
         if stage=='supervisor' and any(c.action=='request_review' for c in response.choices):
@@ -243,6 +257,7 @@ class RetentionAgent:
             if selections and i in selections:
                 choice = selections[i]
                 rec = self.materialize(p,choice.action,'llm',choice.evidence)
+                rec.llm_reason = checked_reason(choice.reason, p)
                 # Keep the rule baseline so the UI can show where the LLM changed the decision.
                 rec.rule_baseline = rule_action(p, impacts(self.model, p))
                 recs.append(rec)

@@ -21,7 +21,7 @@ En B2B pocos clientes concentran mucho ingreso, y perder uno se nota. Un equipo 
 | **Retención** | Elige la acción del playbook por cliente | Simulador what-if, catálogo de acciones | Selecciona acción usando `action_impacts` |
 | **Estratega** | Resumen ejecutivo de cartera para gerencia | Agregados, matriz valor × riesgo | Redacta texto; **se rechaza si cita cifras que no están en los datos** |
 
-Flujo: `usuario → Supervisor → Predictivo → Supervisor → Retención → Supervisor (valida + revisa) → Estratega → Supervisor → usuario`. Todo queda en una traza de mensajes (`SharedState`) descargable. El LLM (Groq `openai/gpt-oss-20b` o Gemini) nunca cambia probabilidades: responde con JSON restringido por esquema y cada respuesta se valida; si falla, se usan reglas explícitas y la interfaz lo declara. Sin códigos de cliente hacia el proveedor, presupuesto diario y límite de 60 s / 32 mensajes. Ninguna acción externa se ejecuta: la decisión final es humana.
+Flujo: `usuario → Supervisor → Predictivo → Supervisor → Retención → Supervisor (valida + revisa) → Estratega → Supervisor → usuario`. Todo queda en una traza de mensajes (`SharedState`) descargable. El LLM (Groq `openai/gpt-oss-120b` o Gemini) nunca cambia probabilidades: responde con JSON restringido por esquema y cada respuesta se valida; si falla, se usan reglas explícitas y la interfaz lo declara. Sin códigos de cliente hacia el proveedor, presupuesto diario y límite de 60 s / 32 mensajes. Ninguna acción externa se ejecuta: la decisión final es humana.
 
 ## Ver a los agentes trabajando
 
@@ -32,7 +32,7 @@ Flujo: `usuario → Supervisor → Predictivo → Supervisor → Retención → 
 ## ¿Cuántos clientes usar?
 
 - **24 (cartera de prueba, recomendada):** 9 de riesgo alto, 6 medio y 9 bajo, los 4 segmentos de valor, las 4 palancas de retención y 1 registro fuera de dominio. Así cada agente actúa al menos una vez.
-- **300:** demuestra la escala de la red neuronal. El LLM sigue revisando solo los `LLM_MAX_CUSTOMERS` clientes de mayor riesgo (12 por defecto, unos 6.500 tokens por análisis, dentro del límite por minuto del plan gratuito de Groq).
+- **300:** demuestra la escala de la red neuronal. El LLM sigue revisando solo los `LLM_MAX_CUSTOMERS` clientes de mayor riesgo (10 por defecto: con las justificaciones cabe en el límite de 8.000 tokens por minuto del plan gratuito de Groq).
 - Validar el modelo en sí no se hace con ninguna de las dos: requiere miles de clientes históricos reales con su resultado conocido.
 
 ## Interfaz
@@ -56,7 +56,7 @@ python -m venv .venv
 .\.venv\Scripts\python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Para el LLM, crear `.env` (ignorado por Git) con `LLM_PROVIDER=groq`, `GROQ_API_KEY=...`, `GROQ_MODEL=openai/gpt-oss-20b`. Nunca versionar claves.
+Para el LLM, crear `.env` (ignorado por Git) con `LLM_PROVIDER=groq`, `GROQ_API_KEY=...`, `GROQ_MODEL=openai/gpt-oss-120b`. Nunca versionar claves.
 
 ## Despliegue
 

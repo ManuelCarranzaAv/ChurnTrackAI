@@ -13,7 +13,7 @@ Pasos:
 
 1. Importar el repositorio `ManuelCarranzaAv/ChurnTrackAI` en Vercel (Add New → Project). Framework: detectado como FastAPI/Python; sin comando de build.
 2. En *Settings → Environment Variables* (Production y Preview) añadir, sin publicarlas en el repositorio ni en el chat:
-   - `LLM_PROVIDER=groq`, `GROQ_API_KEY=<clave>`, `GROQ_MODEL=openai/gpt-oss-20b`
+   - `LLM_PROVIDER=groq`, `GROQ_API_KEY=<clave>`, `GROQ_MODEL=openai/gpt-oss-120b`
    - opcional: `APP_API_KEY` (modo privado), `LLM_DAILY_LIMIT=50`, `PUBLIC_LLM_DAILY_LIMIT=10`, `DATABASE_URL`.
 3. Desplegar. Verificar `/health` (versión 2.0.0), `/api/config` (`hosting: vercel`, `llm_configured: true`) y un análisis con LLM desde la interfaz: la vista **Agentes** debe mostrar “LLM validado” en los cuatro agentes.
 

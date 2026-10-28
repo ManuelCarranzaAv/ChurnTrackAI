@@ -410,6 +410,6 @@ class StrategistAgent:
                     report.update(status='failed', reason=explain_error(code))
                     state.send('llm','estratega','executive_summary_result',{'error':code},'error')
                     state.llm_attempts.append({'agent':'estratega','attempt':1,'status':'failed','code':code,'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
-                    state.warnings.append('estratega: el resumen LLM no superó la verificación; se muestra el resumen por reglas.')
+                    state.warnings.append('estratega: '+(explain_error(code) if code not in ('UNVERIFIED_NUMBERS','INVALID_SUMMARY') else 'el resumen LLM citó cifras no verificadas')+' Se muestra el resumen por reglas.')
         state.executive = summary
         state.send('estratega','supervisor','executive_summary',{'source':summary['source'],'headline':summary['headline']})

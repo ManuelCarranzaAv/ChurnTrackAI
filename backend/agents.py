@@ -400,7 +400,8 @@ class StrategistAgent:
                     draft = ExecutiveSummary.model_validate(result).model_dump()
                     if unsupported_numbers(draft, shared):
                         raise ProviderError('UNVERIFIED_NUMBERS')
-                    summary = {**draft, 'source': 'llm', 'facts': facts}
+                    # The headline stays deterministic: it is the figure managers read first.
+                    summary = {**draft, 'headline': rule_summary(facts)['headline'], 'source': 'llm', 'facts': facts}
                     state.usage.append({**usage,'agent':'estratega'})
                     report.update(status='validated', usage=usage)
                     state.send('llm','estratega','executive_summary_result',{'validated':True,'numbers_checked':True})

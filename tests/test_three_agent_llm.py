@@ -38,6 +38,7 @@ def test_three_real_stages_orchestrated_with_double(client):
     assert all(r['status']=='validated' for r in run['agent_llm'].values())
     assert len(run['llm_report']['attempts'])==4
     assert run['executive']['source']=='llm' and run['agent_report']['strategist']['llm_status']=='validated'
+    assert run['executive']['headline'].endswith('de ingreso mensual en riesgo en 1 clientes')
     assert run['predictions'][0]['llm_interpretation']['action']=='interpret_risk'
     assert run['recommendations'][0]['supervisor_review']['action']=='approve_plan'
     assert sum(u['total_tokens'] for u in run['usage'])==40

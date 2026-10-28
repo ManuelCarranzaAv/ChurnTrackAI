@@ -11,11 +11,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
-from .agents import SupervisorAgent, ACTIONS, LEVERS, allowed, simulate
+from .agents import SupervisorAgent, ACTIONS, LEVERS, allowed, simulate, llm_batch
 from .model import NeuralModel, ROOT
 from .schemas import AnalysisRequest, Customer, Decision, FEATURES
 from .storage import Store
@@ -51,6 +51,23 @@ class BodyLimit:
                 return message
             return await receive()
         await self.app(scope,replay,send)
+
+def readable(error):
+    """Spanish, user-facing text for a field validation error."""
+    kind, ctx = error['type'], error.get('ctx', {})
+    if kind == 'greater_than_equal':
+        return f'debe ser mayor o igual que {ctx.get("ge"):g}'
+    if kind == 'less_than_equal':
+        return f'debe ser menor o igual que {ctx.get("le"):g}'
+    if kind in ('float_parsing', 'float_type', 'finite_number'):
+        return 'debe ser un número'
+    if kind == 'string_pattern_mismatch':
+        return 'solo admite letras, números, guion y guion bajo'
+    if kind in ('string_too_short', 'missing'):
+        return 'es obligatorio'
+    if kind == 'string_too_long':
+        return f'máximo {ctx.get("max_length")} caracteres'
+    return error['msg'].removeprefix('Value error, ')
 
 def create_app(db_url=None):
     RUNTIME.mkdir(parents=True, exist_ok=True)
@@ -108,7 +125,7 @@ def create_app(db_url=None):
     @app.get('/api/config')
     def config():
         return {'agents':['supervisor','predictivo','retencion','estratega'],'hosting':'vercel' if os.getenv('VERCEL') else 'render' if os.getenv('RENDER') else 'local',
-                'llm_provider':getattr(supervisor.retention.provider,'name','unknown'),'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':20,'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER') or os.getenv('VERCEL')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
+                'llm_provider':getattr(supervisor.retention.provider,'name','unknown'),'llm_configured':bool(supervisor.retention.provider.key),'llm_model':supervisor.retention.provider.model,'access_configured':bool(os.getenv('APP_API_KEY')),'max_customers':300,'max_llm_customers':llm_batch(),'demo_sizes':[24,300],'actions':ACTIONS,'persistence':'postgresql' if store.engine.dialect.name == 'postgresql' else 'sqlite','hosting_ephemeral':bool(os.getenv('RENDER') or os.getenv('VERCEL')) and store.engine.dialect.name=='sqlite','model_sha256':model.digest,'disclaimer':'Modelo académico con datos sintéticos. Probabilidades no calibradas para empresas reales. Factores por sustitución a la media; no implican causalidad.'}
 
     @app.get('/api/metrics')
     def metrics():
@@ -140,16 +157,55 @@ def create_app(db_url=None):
         async with app.state.slots:
             return await supervisor.run(payload,persist=persist,demo=demo)
 
+    def demo_customers(size):
+        if size not in (12,24,300):
+            raise HTTPException(422,'La demostración admite 12, 24 o 300 clientes sintéticos.')
+        if size == 12:
+            return json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
+        name = 'demo-24.csv' if size == 24 else 'example-300.csv'
+        with (ROOT/'data'/name).open(encoding='utf-8') as source:
+            return list(csv.DictReader(source))
+
     @app.post('/api/demo')
     async def demo(size:int=12):
-        if size not in (12,300):
-            raise HTTPException(422,'La demostración admite 12 o 300 clientes sintéticos.')
-        if size == 300:
-            with (ROOT/'data/example-300.csv').open(encoding='utf-8') as source:
-                customers = list(csv.DictReader(source))
+        return await execute(AnalysisRequest(customers=demo_customers(size)),persist=False,demo=True)
+
+    @app.post('/api/public/analyze-stream')
+    async def analyze_stream(request:Request, demo:int|None=None, use_llm:bool=False, consent:bool=False):
+        # Same validation and budgets as the public analysis; agent messages are streamed as NDJSON while they happen.
+        if demo is not None:
+            payload = AnalysisRequest(customers=demo_customers(demo),use_llm=use_llm,consent_external_processing=consent)
+        elif request.headers.get('content-type','').startswith('text/csv'):
+            payload = await parse_csv(request,use_llm,consent)
         else:
-            customers = json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
-        return await execute(AnalysisRequest(customers=customers),persist=False,demo=True)
+            try:
+                payload = AnalysisRequest.model_validate_json(await request.body())
+            except ValidationError as exc:
+                raise HTTPException(422,[{'loc':list(e['loc']),'msg':e['msg']} for e in exc.errors()]) from None
+        if app.state.slots.locked():
+            raise HTTPException(429,'Dos análisis en curso. Intenta nuevamente.')
+        limited = payload.use_llm and not store.reserve_public_demo(int(os.getenv('PUBLIC_LLM_DAILY_LIMIT','10')))
+        if limited:
+            payload = payload.model_copy(update={'use_llm':False})
+        queue = asyncio.Queue()
+        async def produce():
+            async with app.state.slots:
+                try:
+                    run = await supervisor.run(payload,persist=False,demo=demo is not None,listener=queue.put_nowait)
+                    if limited:
+                        run['warnings'].append('Cuota pública LLM agotada. Cada cliente recibió análisis neuronal y recomendación por reglas.')
+                    queue.put_nowait({'type':'result','run':run})
+                except Exception:
+                    queue.put_nowait({'type':'error','detail':'El análisis no pudo completarse.'})
+        app.state.stream_task = asyncio.create_task(produce())
+        async def events():
+            yield json.dumps({'type':'start','customers':len(payload.customers),'use_llm':payload.use_llm,'llm_batch':llm_batch()})+chr(10)
+            while True:
+                event = await queue.get()
+                yield json.dumps(event,ensure_ascii=False)+chr(10)
+                if event['type'] in ('result','error'):
+                    break
+        return StreamingResponse(events(),media_type='application/x-ndjson',headers={'X-Accel-Buffering':'no'})
 
     @app.post('/api/demo/llm')
     @app.post('/api/demo/gemini')
@@ -215,13 +271,23 @@ def create_app(db_url=None):
             required = {'cliente_id',*FEATURES}
             if not reader.fieldnames or len(reader.fieldnames)!=len(set(reader.fieldnames)) or set(reader.fieldnames)!=required:
                 raise ValueError('El CSV debe contener exactamente cliente_id y las seis variables; sin columnas duplicadas.')
-            rows = []
+            rows, problems = [], []
             for i,row in enumerate(reader):
                 if i >= 300:
                     raise ValueError('Máximo 300 filas')
                 if None in row or any(v is None for v in row.values()):
                     raise ValueError(f'Fila {i+2}: número de columnas inválido')
-                rows.append(Customer.model_validate({k:(v.replace(',','.') if delimiter==';' and k!='cliente_id' else v) for k,v in row.items()}))
+                try:
+                    rows.append(Customer.model_validate({k:(v.replace(',','.') if delimiter==';' and k!='cliente_id' else v) for k,v in row.items()}))
+                except ValidationError as exc:
+                    # Report every bad cell with its spreadsheet row, so the file can be fixed in one pass.
+                    problems += [f'Fila {i+2}, {".".join(map(str,e["loc"])) or "registro"}: {readable(e)}' for e in exc.errors()]
+            if problems:
+                raise ValueError(' · '.join(problems[:8])+(f' · y {len(problems)-8} errores más' if len(problems) > 8 else ''))
+            if len({c.cliente_id for c in rows}) != len(rows):
+                raise ValueError('Hay códigos de cliente repetidos: cada cliente_id debe ser único.')
+            if not rows:
+                raise ValueError('El archivo no tiene filas de clientes.')
             payload = AnalysisRequest(customers=rows,use_llm=use_llm,consent_external_processing=consent)
         except (UnicodeError,csv.Error,ValueError,IndexError) as exc:
             if isinstance(exc,ValidationError):
@@ -284,6 +350,10 @@ def create_app(db_url=None):
     @app.get('/api/template.csv')
     def template():
         return FileResponse(ROOT/'data/template.csv',media_type='text/csv',filename='plantilla_clientes.csv')
+
+    @app.get('/api/example-24.csv')
+    def example_24():
+        return FileResponse(ROOT/'data/demo-24.csv',media_type='text/csv',filename='cartera_24_clientes_sinteticos.csv')
 
     @app.get('/api/example-300.csv')
     def example_300():

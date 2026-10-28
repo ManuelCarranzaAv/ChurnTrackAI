@@ -3,50 +3,52 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b1f1e">
+<meta name="theme-color" content="#f6f6f3">
 <meta name="description" content="ChurnTrackAI: analítica de abandono B2B con red neuronal y cuatro agentes coordinados.">
 <title>ChurnTrackAI · Retención B2B</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f766e'/%3E%3Cpath d='M8 21l6-6 4 4 6-8' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/assets/app.css?v=2.0.0">
-<script defer src="/assets/core.js?v=2.0.0"></script>
-<script defer src="/assets/app.js?v=2.0.0"></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111110'/%3E%3Cpath d='M8 21l6-6 4 4 6-8' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/app.css?v=2.1.0">
+<script defer src="/assets/core.js?v=2.1.0"></script>
+<script defer src="/assets/app.js?v=2.1.0"></script>
 </head>
 <body>
 <div class="shell">
  <aside class="sidebar" id="sidebar">
   <a class="brand" href="#/inicio" aria-label="ChurnTrackAI inicio">
-   <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 21l6-6 4 4 6-8"/></svg></span>
-   <span>ChurnTrack<b>AI</b></span>
+   <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 16l5-5 3.5 3.5L19 8"/></svg></span>
+   <span>ChurnTrackAI<small>Retención B2B con agentes</small></span>
   </a>
   <nav class="nav" aria-label="Secciones">
-   <p class="nav-label">Análisis</p>
-   <a href="#/inicio" data-route="inicio"><i aria-hidden="true">＋</i>Nuevo análisis</a>
-   <a href="#/resumen" data-route="resumen" data-needs-run><i aria-hidden="true">◧</i>Resumen ejecutivo</a>
-   <a href="#/clientes" data-route="clientes" data-needs-run><i aria-hidden="true">☰</i>Clientes</a>
-   <a href="#/agentes" data-route="agentes" data-needs-run><i aria-hidden="true">◇</i>Agentes</a>
-   <a href="#/plan" data-route="plan" data-needs-run><i aria-hidden="true">✓</i>Plan de acción</a>
+   <a href="#/inicio" data-route="inicio"><span data-icon="plus"></span>Nuevo análisis</a>
+   <a href="#/sala" data-route="sala" data-needs-run><span data-icon="agents"></span>Sala de agentes</a>
+   <p class="nav-label">Resultados</p>
+   <a href="#/resumen" data-route="resumen" data-needs-run><span data-icon="dashboard"></span>Resumen ejecutivo</a>
+   <a href="#/clientes" data-route="clientes" data-needs-run><span data-icon="users"></span>Clientes<span class="count" id="count-clientes"></span></a>
+   <a href="#/plan" data-route="plan" data-needs-run><span data-icon="check"></span>Plan de acción<span class="count" id="count-plan"></span></a>
+   <a href="#/agentes" data-route="agentes" data-needs-run><span data-icon="shield"></span>Auditoría de agentes</a>
    <p class="nav-label">Herramientas</p>
-   <a href="#/simulador" data-route="simulador"><i aria-hidden="true">⇄</i>Simulador what-if</a>
-   <a href="#/modelo" data-route="modelo"><i aria-hidden="true">◎</i>Modelo y método</a>
+   <a href="#/simulador" data-route="simulador"><span data-icon="sliders"></span>Simulador what-if</a>
+   <a href="#/modelo" data-route="modelo"><span data-icon="info"></span>Modelo y método</a>
   </nav>
   <div class="sidebar-foot">
-   <div class="sys" id="sys-model"><span class="dot"></span><div><b>Red neuronal</b><small>6 → 32 → 16 → 8 → 1</small></div></div>
-   <div class="sys" id="sys-llm"><span class="dot"></span><div><b>LLM</b><small>Comprobando…</small></div></div>
+   <div class="sys" id="sys-model"><span class="dot"></span><span><b>Red neuronal</b> · 6→32→16→8→1</span></div>
+   <div class="sys" id="sys-llm"><span class="dot"></span><span><b>LLM</b> · <span class="v">comprobando…</span></span></div>
   </div>
  </aside>
  <div class="main">
   <header class="topbar">
-   <button class="icon-btn menu" id="menu" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">☰</button>
-   <div class="crumbs"><span>ChurnTrackAI</span><b id="crumb">Nuevo análisis</b></div>
+   <button class="icon-btn menu" id="menu" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false"><span data-icon="menu"></span></button>
+   <div class="crumbs"><span>ChurnTrackAI</span><span aria-hidden="true">/</span><b id="crumb">Nuevo análisis</b></div>
    <div class="run-chip" id="run-chip" hidden></div>
-   <a class="btn primary small" href="#/inicio" id="new-run">＋ Nuevo análisis</a>
+   <a class="btn sm" href="#/inicio" id="new-run"><span data-icon="plus"></span>Nuevo análisis</a>
   </header>
   <div class="notice" id="notice" role="status" hidden></div>
   <main id="view" class="view" tabindex="-1"></main>
-  <footer class="foot">Proyecto académico · Tecnologías Emergentes. Modelo entrenado con datos sintéticos: las cifras son estimaciones del modelo, no pérdidas contables. Ninguna acción se ejecuta sin aprobación humana.</footer>
+  <footer class="foot">Proyecto académico · Tecnologías Emergentes. Red neuronal entrenada con datos sintéticos: las cifras son estimaciones del modelo, no pérdidas contables. Ninguna acción se ejecuta sin aprobación humana.</footer>
  </div>
 </div>
 <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
 <aside class="drawer" id="drawer" aria-modal="true" role="dialog" aria-labelledby="drawer-title" hidden></aside>
+<div class="tip" id="tip" hidden></div>
 </body>
 </html>

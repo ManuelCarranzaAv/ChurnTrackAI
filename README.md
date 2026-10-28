@@ -23,9 +23,21 @@ En B2B pocos clientes concentran mucho ingreso, y perder uno se nota. Un equipo 
 
 Flujo: `usuario → Supervisor → Predictivo → Supervisor → Retención → Supervisor (valida + revisa) → Estratega → Supervisor → usuario`. Todo queda en una traza de mensajes (`SharedState`) descargable. El LLM (Groq `openai/gpt-oss-20b` o Gemini) nunca cambia probabilidades: responde con JSON restringido por esquema y cada respuesta se valida; si falla, se usan reglas explícitas y la interfaz lo declara. Sin códigos de cliente hacia el proveedor, presupuesto diario y límite de 60 s / 32 mensajes. Ninguna acción externa se ejecuta: la decisión final es humana.
 
+## Ver a los agentes trabajando
+
+- **Sala de agentes (en vivo):** `POST /api/public/analyze-stream` transmite en NDJSON cada mensaje del estado compartido mientras ocurre. La interfaz muestra el estado de cada agente (en espera, trabajando, consultando al LLM, listo o falló) y narra cada mensaje en lenguaje natural, con su contenido técnico desplegable. Se puede reproducir después desde *Auditoría de agentes*.
+- **Conversación por cliente:** en la ficha de cada cliente, Predictivo, Retención y Supervisor explican su parte (riesgo y factores, acción y simulación, verificación o revisión humana) y tú decides.
+- **Valor medible del LLM:** cada recomendación conserva la acción que habrían propuesto las reglas (`rule_baseline`). La interfaz muestra cuántas decisiones cambió el LLM, cuántas segundas opiniones dio el Supervisor y cuántas pidió revisar una persona.
+
+## ¿Cuántos clientes usar?
+
+- **24 (cartera de prueba, recomendada):** 9 de riesgo alto, 6 medio y 9 bajo, los 4 segmentos de valor, las 4 palancas de retención y 1 registro fuera de dominio. Así cada agente actúa al menos una vez.
+- **300:** demuestra la escala de la red neuronal. El LLM sigue revisando solo los `LLM_MAX_CUSTOMERS` clientes de mayor riesgo (12 por defecto, unos 6.500 tokens por análisis, dentro del límite por minuto del plan gratuito de Groq).
+- Validar el modelo en sí no se hace con ninguna de las dos: requiere miles de clientes históricos reales con su resultado conocido.
+
 ## Interfaz
 
-- **Nuevo análisis**: cartera de ejemplo (300 clientes), CSV propio (validado con vista previa) o un cliente; LLM opcional con consentimiento.
+- **Nuevo análisis**: cartera de prueba (24), cartera grande (300), CSV propio (validado con errores por fila y vista previa) o un cliente; LLM opcional con consentimiento.
 - **Resumen ejecutivo**: brief del Estratega, KPI de ingreso en riesgo, matriz valor × riesgo interactiva, segmentos, prioridades, distribución y sensibilidad.
 - **Clientes**: búsqueda, filtros y ficha por cliente (salud, factores, recomendación, simulación, revisión de agentes, borrador de contacto).
 - **Agentes**: estado de cada agente, traza real de mensajes, uso de tokens y controles.
@@ -62,6 +74,7 @@ En ambos planes gratuitos el almacenamiento SQLite es temporal. El análisis pú
 | `POST /api/public/analyze` · `POST /api/public/analyze-csv` | Análisis temporal (JSON o CSV ≤300 filas, `use_llm` + consentimiento) |
 | `POST /api/public/validate-csv` | Validación y vista previa sin inferencia |
 | `POST /api/public/simulate` | Simulador what-if de un cliente (sin LLM ni almacenamiento) |
+| `POST /api/public/analyze-stream` | Igual que el análisis público, pero transmite los mensajes de los agentes en vivo (NDJSON); admite `?demo=24\|300`, CSV o JSON |
 | `POST /api/analyze`, `GET /api/runs`, decisiones | Modo privado con `APP_API_KEY` (Bearer) e historial persistido |
 
 CSV: `cliente_id,antiguedad,compras_mensuales,monto_promedio,reclamos,dias_ultima_compra,pagos_atrasados`.
@@ -70,7 +83,7 @@ CSV: `cliente_id,antiguedad,compras_mensuales,monto_promedio,reclamos,dias_ultim
 
 ```powershell
 .\.venv\Scripts\python -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python -m pytest -q        # 70 pruebas: modelo, API, seguridad, 4 agentes, análisis de negocio
+.\.venv\Scripts\python -m pytest -q        # 78 pruebas: modelo, API, seguridad, 4 agentes, análisis de negocio
 node tests/actions.cjs                     # utilidades del frontend
 ```
 

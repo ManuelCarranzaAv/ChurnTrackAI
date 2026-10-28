@@ -25,3 +25,20 @@ assert.deepEqual(filterCustomers(book,{sort:'probability'}).map(p=>p.cliente_id)
 assert.deepEqual(filterCustomers(book,{query:'a1'}).map(p=>p.cliente_id),['A1']);
 assert.deepEqual(filterCustomers(book,{quadrant:'rescatar'}).map(p=>p.cliente_id),['B2']);
 console.log('9 comprobaciones de aprobación y filtrado correctas');
+// Agent narration and lane states (live room).
+const {narrate,agentStates}=require('../frontend/core.js');
+const trace=[
+ {sender:'usuario',recipient:'supervisor',tool:'analysis_request',status:'ok',brief:{customer_count:24,requested_llm:true}},
+ {sender:'supervisor',recipient:'predictivo',tool:'delegate_prediction',status:'delegated',brief:{task:'x'}},
+ {sender:'predictivo',recipient:'supervisor',tool:'neural_inference_and_mean_ablation',status:'ok',brief:{customers:24,high:9,medium:6,low:9,out_of_domain:1}},
+ {sender:'predictivo',recipient:'llm',tool:'predictivo_llm_request',status:'ok',brief:{customers:12}},
+ {sender:'llm',recipient:'predictivo',tool:'predictivo_llm_result',status:'error',brief:{error:'HTTP_429_PROVIDER_REJECTED'}},
+];
+assert.match(narrate(trace[2]),/9 alto, 6 medio, 9 bajo\. 1 registro queda fuera del dominio/);
+assert.match(narrate(trace[4]),/no se aceptó \(HTTP_429/);
+assert.match(narrate({tool:'supervisor_llm_result',sender:'llm',status:'ok',brief:{choices:3,actions:{approve_plan:2,request_review:1}}}),/2 planes aprobados, 1 para revisión humana/);
+let st=agentStates(trace.slice(0,4));
+assert.equal(st.predictivo.state,'llm');assert.equal(st.supervisor.state,'working');assert.equal(st.retencion.state,'waiting');
+st=agentStates(trace);
+assert.equal(st.predictivo.state,'working');assert.ok(st.predictivo.llmFailed);assert.equal(st.predictivo.llm,1);
+console.log('6 comprobaciones de narración de agentes correctas');

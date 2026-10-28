@@ -45,6 +45,55 @@
   return rows.sort((a,b)=>{const x=f(a),y=f(b);return x<y?-1:x>y?1:0;});
  }
 
- const api={FEATURES,LABELS,ACTION_LABELS,QUADRANTS,money,pct,approvePendingLocal,actionPackage,planCsv,filterCustomers};
+ const NAMES={supervisor:'Supervisor',predictivo:'Predictivo',retencion:'Retención',estratega:'Estratega',llm:'LLM',usuario:'Tú'};
+ const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
+ const actionList=a=>Object.entries(a||{}).sort((x,y)=>y[1]-x[1]).map(([k,n])=>`${n} ${(ACTION_LABELS[k]||k).toLowerCase()}`).join(', ');
+ const review=a=>{const ok=(a||{}).approve_plan||0,rv=(a||{}).request_review||0;return `${plural(ok,'plan aprobado','planes aprobados')}${rv?`, ${rv} para revisión humana`:''}`;};
+ // Plain-language narration of one trace message (live or replayed). Only states what the brief contains.
+ function narrate(m){
+  const b=m.brief||{},err=b.error;
+  if(err&&m.sender==='llm')return `La respuesta del LLM no se aceptó (${err}). ${m.status==='retry'?'Reintento.':'El agente continúa con reglas explícitas.'}`;
+  switch(m.tool){
+   case 'analysis_request':return `Solicito analizar ${plural(b.customer_count,'cliente','clientes')} ${b.requested_llm?'con revisión LLM':'sin LLM'}.`;
+   case 'delegate_prediction':return 'Delego al Predictivo: validar los datos, calcular el riesgo y explicar sus factores.';
+   case 'neural_inference_and_mean_ablation':return `Calculé el riesgo con la red neuronal: ${b.high} alto, ${b.medium} medio, ${b.low} bajo${b.out_of_domain?`. ${plural(b.out_of_domain,'registro queda','registros quedan')} fuera del dominio del modelo`:''}.`;
+   case 'predictivo_llm_request':return `Envío ${plural(b.customers,'perfil','perfiles')} sin código de cliente al LLM para interpretar el riesgo.`;
+   case 'predictivo_llm_result':return `Interpretación validada para ${plural(b.choices,'cliente','clientes')}${b.actions?.review_data?` (${b.actions.review_data} con datos a revisar)`:''}.`;
+   case 'delegate_retention':return 'Delego a Retención: elegir una acción sustentada para cada cliente.';
+   case 'structured_selection_request':return `Pido al LLM elegir la acción de ${plural(b.customers,'cliente','clientes')}, con el impacto simulado de cada palanca como evidencia.`;
+   case 'validated_json':return `Selección validada: ${actionList(b.actions)}.`;
+   case 'provider_call':return `La llamada al LLM falló (${b.error||'error'}).`;
+   case 'llm_unavailable':return 'El LLM no está configurado: aplico reglas explícitas.';
+   case 'daily_budget':return 'Se agotó el presupuesto diario del LLM: aplico reglas explícitas.';
+   case 'recommendations':return `${b.correction?'Corrección entregada: ':''}${plural(b.customers,'plan propuesto','planes propuestos')} — ${actionList(b.actions)}.`;
+   case 'request_correction':return 'Encontré propuestas inconsistentes: pido a Retención rehacerlas con reglas.';
+   case 'supervisor_llm_request':return `Pido al LLM una segunda revisión de ${plural(b.customers,'propuesta','propuestas')}.`;
+   case 'supervisor_llm_result':return `Revisión validada: ${review(b.actions)}.`;
+   case 'delegate_executive_summary':return 'Delego al Estratega el resumen para gerencia.';
+   case 'executive_summary_request':return `Envío ${plural(b.facts,'hecho verificado','hechos verificados')} al LLM, sin códigos de cliente.`;
+   case 'executive_summary_result':return b.validated?'Borrador aceptado: todas sus cifras existen en los datos verificados.':'Borrador rechazado.';
+   case 'executive_summary':return `Resumen listo (${b.source==='llm'?'redactado por LLM':'por reglas'}): «${b.headline}».`;
+   case 'validated_report':return 'Informe validado y entregado. No se ejecutó ninguna acción externa: la decisión es tuya.';
+   case 'execution_failed':return 'La ejecución se interrumpió.';
+   default:return m.tool;
+  }
+ }
+ // Agent lane states derived from the message stream: waiting → working → llm → done/failed.
+ function agentStates(messages){
+  const s={supervisor:{state:'waiting',msgs:0,llm:0},predictivo:{state:'waiting',msgs:0,llm:0},retencion:{state:'waiting',msgs:0,llm:0},estratega:{state:'waiting',msgs:0,llm:0}};
+  for(const m of messages){
+   if(s[m.sender])s[m.sender].msgs++;
+   if(m.sender==='usuario')s.supervisor.state='working';
+   if(m.sender==='supervisor'&&s[m.recipient]&&m.status==='delegated')s[m.recipient].state='working';
+   if(s[m.sender]&&m.recipient==='llm'){s[m.sender].state='llm';s[m.sender].llm++;}
+   if(m.sender==='llm'&&s[m.recipient]){s[m.recipient].state='working';if(m.status==='error')s[m.recipient].llmFailed=true;else if(m.status==='ok')s[m.recipient].llmOk=true;}
+   if(s[m.sender]&&m.sender!=='supervisor'&&m.recipient==='supervisor')s[m.sender].state='done';
+   if(m.tool==='validated_report')s.supervisor.state='done';
+   if(m.tool==='execution_failed')s.supervisor.state='failed';
+  }
+  return s;
+ }
+
+ const api={FEATURES,LABELS,ACTION_LABELS,QUADRANTS,NAMES,money,pct,approvePendingLocal,actionPackage,planCsv,filterCustomers,narrate,agentStates};
  if(typeof module!=='undefined')module.exports=api;else root.Core=api;
 })(typeof window!=='undefined'?window:globalThis);

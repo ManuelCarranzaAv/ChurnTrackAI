@@ -19,3 +19,12 @@ def test_preview_rejects_duplicate_and_invalid_cells(client):
     for rows in ([ROW,ROW],[{**ROW,'reclamos':-1}],[{**ROW,'monto_promedio':'NaN'}]):
         assert client.post('/api/public/validate-csv',content=csv_body(rows)).status_code==422
     assert client.post('/api/public/validate-csv',content='cliente_id\nX').status_code==422
+
+
+def test_csv_errors_name_every_row_in_spanish(client):
+    head='cliente_id,antiguedad,compras_mensuales,monto_promedio,reclamos,dias_ultima_compra,pagos_atrasados\n'
+    detail=client.post('/api/public/validate-csv',content=head+'X 1,10,3,500,9,20,-1\nX-2,10,abc,500,1,20,1\n').json()['detail']
+    assert 'Fila 2, cliente_id: solo admite letras' in detail
+    assert 'Fila 2, pagos_atrasados: debe ser mayor o igual que 0' in detail
+    assert 'Fila 3, compras_mensuales: debe ser un número' in detail
+    assert 'repetidos' in client.post('/api/public/validate-csv',content=head+'A,1,1,1,1,1,1\nA,1,1,1,1,1,1\n').json()['detail']

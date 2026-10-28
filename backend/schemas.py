@@ -64,6 +64,7 @@ class Recommendation(StrictModel):
     steps: list[str] = Field(default_factory=list)
     success_check: str = ''
     simulation: dict | None = None
+    rule_baseline: str = ''
     decision: Literal['pending', 'approved', 'rejected'] = 'pending'
 
 class Message(StrictModel):

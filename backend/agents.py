@@ -5,7 +5,8 @@ import re
 import time
 import uuid
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, ValidationError
+from collections import Counter
+from pydantic import BaseModel, Field, PrivateAttr, ValidationError
 from .schemas import AnalysisRequest, Message, Prediction, Recommendation, LLMResponse, ExecutiveSummary
 from .llm import ProviderError, explain_error
 from .analytics import portfolio
@@ -92,10 +93,36 @@ class SharedState(BaseModel):
     agent_llm: dict = Field(default_factory=dict)
     executive: dict | None = None
 
+    _listener: object = PrivateAttr(default=None)
+
     def send(self, sender, recipient, tool, payload, status='ok'):
         if len(self.trace) >= 32:
             raise RuntimeError('MAX_STEPS')
-        self.trace.append(Message(sequence=len(self.trace)+1, timestamp=now(), sender=sender, recipient=recipient, tool=tool, status=status, payload=payload))
+        message = Message(sequence=len(self.trace)+1, timestamp=now(), sender=sender, recipient=recipient, tool=tool, status=status, payload=payload)
+        self.trace.append(message)
+        if self._listener:
+            # Live view gets a compact brief; the full payload stays in the final trace.
+            self._listener({'type':'message','sequence':message.sequence,'timestamp':message.timestamp,'sender':sender,'recipient':recipient,'tool':tool,'status':status,'brief':brief(tool,payload)})
+
+def brief(tool, payload):
+    if 'error' in payload:
+        return {'error':payload['error']}
+    if 'outputs' in payload and tool.startswith('neural'):
+        risks = Counter(o['risk'] for o in payload['outputs'])
+        return {'customers':len(payload['outputs']),'high':risks['ALTO'],'medium':risks['MEDIO'],'low':risks['BAJO'],'out_of_domain':sum(o['out_of_domain'] for o in payload['outputs'])}
+    if 'outputs' in payload:
+        return {'customers':len(payload['outputs']),'source':payload.get('source'),'actions':dict(Counter(o['action'] for o in payload['outputs'])),'correction':payload.get('correction',False)}
+    if 'input' in payload:
+        return {'customers':len(payload['input']),'identifiers_removed':payload.get('identifiers_removed',False)}
+    if 'choices' in payload:
+        return {'choices':len(payload['choices']),'actions':dict(Counter(c['action'] for c in payload['choices']))}
+    if 'facts' in payload:
+        return {'facts':len(payload['facts'].get('hechos_verificados',payload['facts']))}
+    return {k:v for k,v in payload.items() if isinstance(v,(str,int,float,bool))}
+
+def llm_batch():
+    # Free LLM tiers limit tokens per minute; 12 customers ≈ 6.5k tokens across four agents.
+    return max(1, min(20, int(os.getenv('LLM_MAX_CUSTOMERS', '12'))))
 
 async def review_stage(stage, request, state, provider, store):
     report = {'status':'not_called','checked_indices':[],'choices':[]}
@@ -107,7 +134,7 @@ async def review_stage(stage, request, state, provider, store):
         report['reason'] = 'Presupuesto diario agotado.'
         state.warnings.append(f'{stage}: sin cuota LLM; se conservan controles deterministas.')
         return
-    indices = sorted(range(len(state.predictions)),key=lambda i:-state.predictions[i].probability)[:20]
+    indices = sorted(range(len(state.predictions)),key=lambda i:-state.predictions[i].probability)[:llm_batch()]
     payload = []
     for i in indices:
         p = state.predictions[i]
@@ -165,10 +192,10 @@ class RetentionAgent:
     async def execute(self, request, state, correction=False):
         selections = None
         if request.use_llm and not correction:
-            candidates = sorted(range(len(state.predictions)), key=lambda i: -state.predictions[i].probability)[:20]
+            candidates = sorted(range(len(state.predictions)), key=lambda i: -state.predictions[i].probability)[:llm_batch()]
             payload = [{'index':i,'probability':p.probability,'risk':p.risk,'observed':p.observed,'allowed_actions':allowed(p),'action_impacts':impacts(self.model,p)} for i in candidates for p in [state.predictions[i]]]
-            if len(state.predictions) > 20:
-                state.warnings.append('El LLM se solicita para los 20 clientes de mayor probabilidad; los restantes utilizan reglas explícitas.')
+            if len(state.predictions) > llm_batch():
+                state.warnings.append(f'El LLM revisa los {llm_batch()} clientes de mayor probabilidad; los restantes usan reglas explícitas.')
             interpretation={c['index']:c for c in state.agent_llm.get('predictivo',{}).get('choices',[])}
             for row in payload:
                 if row['index'] in interpretation: row['predictive_review']=interpretation[row['index']]
@@ -197,7 +224,7 @@ class RetentionAgent:
                             raise ProviderError('UNSUPPORTED_RECOMMENDATION')
                     state.send('llm','retencion','validated_json',response.model_dump())
                     state.llm_attempts.append({'agent':'retencion','attempt':attempt+1,'status':'validated','elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
-                    state.mode = 'mixed' if len(state.predictions) > 20 else 'llm'
+                    state.mode = 'mixed' if len(state.predictions) > llm_batch() else 'llm'
                     break
                 except ProviderError as exc:
                     selections = None
@@ -213,7 +240,10 @@ class RetentionAgent:
         for i, p in enumerate(state.predictions):
             if selections and i in selections:
                 choice = selections[i]
-                recs.append(self.materialize(p,choice.action,'llm',choice.evidence))
+                rec = self.materialize(p,choice.action,'llm',choice.evidence)
+                # Keep the rule baseline so the UI can show where the LLM changed the decision.
+                rec.rule_baseline = rule_action(p, impacts(self.model, p))
+                recs.append(rec)
             else:
                 recs.append(self.materialize(p, rule_action(p, impacts(self.model, p)), 'rules'))
         state.recommendations = recs
@@ -242,8 +272,9 @@ class SupervisorAgent:
                 return False
         return True
 
-    async def run(self, request, persist=True, demo=False):
+    async def run(self, request, persist=True, demo=False, listener=None):
         state = SharedState()
+        state._listener = listener
         start = time.perf_counter()
         async def workflow():
             state.send('usuario','supervisor','analysis_request', {'customer_count':len(request.customers),'requested_llm':request.use_llm,'demo':demo})
@@ -272,6 +303,8 @@ class SupervisorAgent:
                 state.send('supervisor','usuario','execution_failed', {'error':type(exc).__name__},'error')
         state.agent_llm['retencion'] = {'status':'validated' if any(r.source=='llm' for r in state.recommendations) else 'failed' if any(a.get('agent')=='retencion' for a in state.llm_attempts) else 'not_called','checked_indices':[i for i,r in enumerate(state.recommendations) if r.source=='llm']}
         run = state.model_dump()
+        for message in run['trace']:
+            message['brief'] = brief(message['tool'], message['payload'])
         successful = any(r.source=='llm' for r in state.recommendations)
         errors = [a['code'] for a in state.llm_attempts if a.get('code')]
         run['llm_report'] = {
@@ -296,7 +329,7 @@ class SupervisorAgent:
                 row['quadrant'] = run['analytics']['customer_quadrants'][row['cliente_id']]
         run['agent_report'] = {
             'predictive': {'count':len(state.predictions),'out_of_domain':sum(bool(p.warnings) for p in state.predictions)},
-            'retention': {'llm_count':sum(r.source=='llm' for r in state.recommendations),'rules_count':sum(r.source=='rules' for r in state.recommendations),'actions':{action:sum(r.action==action for r in state.recommendations) for action in ACTIONS}},
+            'retention': {'llm_count':sum(r.source=='llm' for r in state.recommendations),'changed_vs_rules':sum(bool(r.rule_baseline) and r.rule_baseline!=r.action for r in state.recommendations),'rules_count':sum(r.source=='rules' for r in state.recommendations),'actions':{action:sum(r.action==action for r in state.recommendations) for action in ACTIONS}},
             'supervisor': {'validated':state.status=='completed','checks':['Correspondencia de clientes','Acciones compatibles con indicadores','Evidencia verificable','Simulación what-if recalculada','Plan de seguimiento y revisión humana'],'corrections':sum(m.tool=='request_correction' for m in state.trace)},
             'strategist': {'source':(state.executive or {}).get('source','none'),'llm_status':state.agent_llm.get('estratega',{}).get('status','not_called')},
         }
@@ -364,7 +397,8 @@ def rule_summary(f):
                f"Atender con acciones escalables a los {f['cuadrante_automatizar']} clientes del cuadrante Automatizar.",
                f"Vigilar las variables más sensibles del modelo: {', '.join(f['variables_mas_sensibles']) or 'sin datos suficientes'}."]
     if f['fuera_de_dominio']:
-        actions.append(f"Validar {f['fuera_de_dominio']} registros fuera del dominio del modelo antes de actuar.")
+        n = f['fuera_de_dominio']
+        actions.append(f"Validar {'el registro' if n == 1 else f'{n} registros'} fuera del dominio del modelo antes de actuar.")
     return {'headline': f"{f['ingreso_mensual_en_riesgo']} de ingreso mensual en riesgo en {f['clientes']} clientes",
             'findings': findings, 'actions': actions[:4]}
 

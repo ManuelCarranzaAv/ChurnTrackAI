@@ -1,240 +1,341 @@
 'use strict';
-// ChurnTrackAI UI: hash-routed single page, no build step. Public analyses are temporary (not stored server-side).
-const {FEATURES,LABELS,ACTION_LABELS,QUADRANTS,money,pct,approvePendingLocal,actionPackage,planCsv,filterCustomers}=window.Core;
+// ChurnTrackAI UI: hash-routed single page, no build step. Public analyses are temporary (never stored server-side).
+const {FEATURES,LABELS,ACTION_LABELS,QUADRANTS,NAMES,money,pct,approvePendingLocal,actionPackage,planCsv,filterCustomers,narrate,agentStates}=window.Core;
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dur=ms=>ms<1000?`${Math.round(ms)} ms`:`${(ms/1000).toFixed(1)} s`;
 const pp=x=>(x*100).toLocaleString('es-PE',{maximumFractionDigits:1})+' pp';
 const RANGES={antiguedad:[1,60,1],compras_mensuales:[1,15,1],monto_promedio:[100,4999,50],reclamos:[0,7,1],dias_ultima_compra:[1,120,1],pagos_atrasados:[0,5,1]};
-const AGENTS={
- supervisor:{name:'Supervisor',initial:'S',role:'Orquesta el flujo, valida cada salida, recalcula simulaciones y pide correcciones.',tools:['Delegación y reintento','Validación de evidencia','Revisión LLM de consistencia']},
- predictivo:{name:'Predictivo',initial:'P',role:'Ejecuta la red neuronal, explica factores y detecta datos fuera de dominio.',tools:['Inferencia neuronal','Sustitución a la media','Interpretación LLM']},
- retencion:{name:'Retención',initial:'R',role:'Elige la acción del playbook usando la simulación what-if de cada palanca.',tools:['Simulador what-if','Catálogo de acciones','Selección LLM restringida']},
- estratega:{name:'Estratega',initial:'E',role:'Redacta el resumen ejecutivo de cartera; cada cifra se verifica contra los datos.',tools:['Agregados de cartera','Matriz valor × riesgo','Verificación de cifras']},
- usuario:{name:'Usuario',initial:'U'},llm:{name:'LLM',initial:'AI'}
+const ICONS={
+ plus:'<path d="M12 5v14M5 12h14"/>',agents:'<circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M12 7.2v3.8M12 11l-5.4 5.2M12 11l5.4 5.2"/>',
+ dashboard:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+ users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+ check:'<path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+ shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+ info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+ upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+ file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+ database:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>',
+ layers:'<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/>',spark:'<path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/>',
+ x:'<path d="M18 6 6 18M6 6l12 12"/>',play:'<path d="m7 4 13 8-13 8z"/>',alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+ help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+ predictivo:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',retencion:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+ supervisor:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>',estratega:'<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>',
+ llm:'<path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/>',usuario:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
 };
-const S={config:null,metrics:null,run:null,source:'demo',csv:null,llm:false,consent:false,filters:{query:'',risk:'',quadrant:'',sort:'revenue_at_risk'},page:0,planFilter:'pending',planLimit:40,sim:null,busy:false};
+const icon=(n,cls='')=>`<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||''}</svg>`;
+const AGENTS={
+ predictivo:{role:'Calcula el riesgo con la red neuronal, explica los factores y detecta datos fuera de dominio.',llm:'Interpreta el riesgo de los clientes priorizados.'},
+ retencion:{role:'Elige la acción del playbook usando la simulación what-if de cada palanca.',llm:'Selecciona la acción con evidencia y el impacto simulado.'},
+ supervisor:{role:'Orquesta el flujo, valida cada salida, recalcula simulaciones y pide correcciones.',llm:'Da una segunda opinión: aprueba o pide revisión humana.'},
+ estratega:{role:'Convierte los resultados en un resumen para gerencia; verifica cada cifra.',llm:'Redacta hallazgos y acciones; se rechaza si inventa cifras.'}
+};
+const ORDER=['predictivo','retencion','supervisor','estratega'];
+const av=(k,sm)=>`<span class="av ${sm?'sm':''} ${k==='llm'?'llm':''}" style="--c:var(--a-${k})" title="${NAMES[k]||k}">${icon(k)}</span>`;
+const S={config:null,metrics:null,run:null,source:'demo24',csv:null,single:null,llm:false,consent:false,filters:{query:'',risk:'',quadrant:'',sort:'revenue_at_risk'},page:0,planFilter:'pending',planLimit:40,sim:null,simFrom:null,busy:false,live:null};
 
 async function api(path,opts={}){
  const res=await fetch(path,opts);
  let body=null;try{body=await res.json();}catch{}
- if(!res.ok){
-  const d=body?.detail;
-  throw Error(Array.isArray(d)?d.map(e=>`${(e.loc||[]).slice(1).join('.')||'dato'}: ${e.msg}`).join(' · '):d||`Error ${res.status}`);
- }
+ if(!res.ok)throw Error(errorText(body,res.status));
  return body;
+}
+function errorText(body,status){
+ const d=body?.detail;
+ return Array.isArray(d)?d.map(e=>`${(e.loc||[]).filter(x=>x!=='body').join(' › ')||'dato'}: ${e.msg}`).join(' · '):d||`Error ${status}`;
 }
 let noticeTimer;
 function notice(msg,kind='info'){
  const n=$('notice');clearTimeout(noticeTimer);
  if(!msg){n.hidden=true;return;}
  n.className='notice '+kind;n.hidden=false;
- n.innerHTML=`<span>${esc(msg)}</span><button aria-label="Cerrar aviso">×</button>`;
+ n.innerHTML=`${icon(kind==='error'?'alert':'info','s')}<span>${esc(msg)}</span><button aria-label="Cerrar aviso">${icon('x','s')}</button>`;
  n.querySelector('button').onclick=()=>notice('');
  if(kind!=='error')noticeTimer=setTimeout(()=>notice(''),9000);
 }
 function download(name,text,type){
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
+const RISK={ALTO:'Riesgo alto',MEDIO:'Riesgo medio',BAJO:'Riesgo bajo'};
 const riskBadge=r=>`<span class="badge ${r}">${{ALTO:'Alto',MEDIO:'Medio',BAJO:'Bajo'}[r]||esc(r)}</span>`;
-const srcBadge=s=>s==='llm'?'<span class="badge llm">LLM verificado</span>':'<span class="badge rules">Reglas</span>';
-const quadBadge=q=>q?`<span class="badge q"><i class="qdot q-${q}"></i>${QUADRANTS[q].label}</span>`:'';
-const statusBadge=s=>({validated:'<span class="badge ok">LLM validado</span>',failed:'<span class="badge fail">LLM falló · reglas</span>'}[s]||'<span class="badge idle">Sin LLM</span>');
+const prioBadge=p=>`<span class="badge ${p}">${{URGENTE:'Urgente',ATENCION:'Atención',NORMAL:'Normal'}[p]}</span>`;
+const srcBadge=s=>s==='llm'?`<span class="badge llm plain">${icon('spark','s')}LLM</span>`:'<span class="badge rules plain">Reglas</span>';
+const quadBadge=q=>q?`<span class="badge q q-${q}">${QUADRANTS[q].label}</span>`:'';
 const probBar=p=>`<div class="prob"><div class="bar-track"><div class="bar-fill ${p.risk}" style="width:${(p.probability*100).toFixed(1)}%"></div></div><span class="num">${pct(p.probability)}</span></div>`;
 const recOf=id=>S.run?.recommendations.find(r=>r.cliente_id===id);
 const predOf=id=>S.run?.predictions.find(p=>p.cliente_id===id);
+const changed=r=>r&&r.source==='llm'&&r.rule_baseline&&r.rule_baseline!==r.action;
+function agentChips(p,r){
+ const sup=r?.supervisor_review;
+ return `<span class="agents-chips" aria-label="Revisión de agentes">
+  <span class="ac ${p.llm_interpretation?'llm':''}" style="--c:var(--a-predictivo)" title="Predictivo${p.llm_interpretation?' · interpretó con LLM':''}">P</span>
+  <span class="ac ${r?.source==='llm'?'llm':''}" style="--c:var(--a-retencion)" title="Retención · ${r?.source==='llm'?(changed(r)?'LLM cambió la acción de las reglas':'LLM confirmó la acción'):'reglas'}">R</span>
+  <span class="ac ${sup?.action==='request_review'?'flag':sup?'llm':''}" style="--c:var(--a-supervisor)" title="Supervisor · ${sup?(sup.action==='approve_plan'?'aprobó con LLM':'pidió revisión humana'):'controles deterministas'}">S</span></span>`;
+}
 
 /* ---------- Routing ---------- */
-const TITLES={inicio:'Nuevo análisis',resumen:'Resumen ejecutivo',clientes:'Clientes',agentes:'Agentes',plan:'Plan de acción',simulador:'Simulador what-if',modelo:'Modelo y método'};
-const VIEWS={inicio:viewStart,resumen:viewSummary,clientes:viewCustomers,agentes:viewAgents,plan:viewPlan,simulador:viewSimulator,modelo:viewModel};
+const TITLES={inicio:'Nuevo análisis',sala:'Sala de agentes',resumen:'Resumen ejecutivo',clientes:'Clientes',plan:'Plan de acción',agentes:'Auditoría de agentes',simulador:'Simulador what-if',modelo:'Modelo y método'};
+const VIEWS={inicio:viewStart,sala:viewRoom,resumen:viewSummary,clientes:viewCustomers,plan:viewPlan,agentes:viewAgents,simulador:viewSimulator,modelo:viewModel};
 function route(){
  let name=(location.hash.replace(/^#\/?/,'')||'inicio').split('?')[0];
  if(!VIEWS[name])name='inicio';
- if(document.querySelector(`[data-route="${name}"]`)?.hasAttribute('data-needs-run')&&!S.run){location.hash='#/inicio';return;}
- document.querySelectorAll('.nav a').forEach(a=>{a.classList.toggle('active',a.dataset.route===name);a.classList.toggle('disabled',a.hasAttribute('data-needs-run')&&!S.run);if(a.dataset.route===name)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+ if(document.querySelector(`[data-route="${name}"]`)?.hasAttribute('data-needs-run')&&!S.run&&!(name==='sala'&&S.live)){location.hash='#/inicio';return;}
+ document.querySelectorAll('.nav a').forEach(a=>{const on=a.dataset.route===name;a.classList.toggle('active',on);if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
  $('crumb').textContent=TITLES[name];document.title=`${TITLES[name]} · ChurnTrackAI`;
  $('sidebar').classList.remove('open');$('menu').setAttribute('aria-expanded','false');
- closeDrawer();
+ closeDrawer();hideTip();
  VIEWS[name]();
  $('view').focus({preventScroll:true});window.scrollTo(0,0);
 }
 function updateChrome(){
  const c=$('run-chip');
- if(S.run){const s=S.run.summary;c.hidden=false;c.textContent=`${s.customers} clientes · ${s.high} riesgo alto · ${S.run.mode==='rules'?'reglas':'con LLM'}`;}
+ if(S.run){const s=S.run.summary;c.hidden=false;c.innerHTML=`<span class="dot ${S.run.mode==='rules'?'off':'ok'}"></span>${s.customers} clientes · ${s.high} en riesgo alto · ${S.run.mode==='rules'?'reglas':'con LLM'}`;}
  else c.hidden=true;
- document.querySelectorAll('.nav a[data-needs-run]').forEach(a=>a.classList.toggle('disabled',!S.run));
+ document.querySelectorAll('.nav a[data-needs-run]').forEach(a=>a.classList.toggle('disabled',!S.run&&!(a.dataset.route==='sala'&&S.live)));
+ $('count-clientes').textContent=S.run?S.run.predictions.length:'';
+ $('count-plan').textContent=S.run?(S.run.recommendations.filter(r=>r.decision==='pending').length||''):'';
 }
 
 /* ---------- Start ---------- */
+const SOURCES=[
+ ['demo24','layers','Cartera de prueba · 24 clientes','Recomendada para ver a los agentes: todos los niveles de riesgo, segmentos y acciones.','Recomendada'],
+ ['demo300','database','Cartera grande · 300 clientes','Muestra la escala: la red analiza todos; el LLM revisa solo los más riesgosos.'],
+ ['csv','upload','Tu cartera (CSV)','Hasta 300 clientes con 6 indicadores. Se valida antes de analizar.'],
+ ['single','user','Un cliente','Ingresa sus indicadores a mano.']
+];
 function viewStart(){
- const cfg=S.config||{},llmOk=cfg.llm_configured;
+ const cfg=S.config||{},llmOk=cfg.llm_configured,batch=cfg.max_llm_customers||12;
  $('view').innerHTML=`
- <section class="hero">
-  <div><span class="eyebrow">Customer Success B2B · IA aplicada</span>
-   <h1>Detecta qué clientes están por irse, cuánto ingreso está en juego y qué hacer.</h1>
-   <p>Una red neuronal estima la probabilidad de abandono de cada cliente. Cuatro agentes coordinados convierten esa predicción en un plan de retención priorizado, verificable y aprobado por personas.</p>
+ <div class="start">
+  <div>
+   <div class="lead"><div class="kicker">${icon('agents','s')}Sistema multiagente · Red neuronal + LLM</div>
+    <h1>¿Qué clientes B2B están por irse, cuánto ingreso está en juego y qué hacer?</h1>
+    <p>Elige una cartera. Cuatro agentes la analizan en cadena y podrás ver en vivo qué hace cada uno, qué le pregunta al LLM y qué verifica el Supervisor antes de proponerte un plan.</p></div>
+   <div class="step-h"><span class="n">1</span><h2>Datos</h2></div>
+   <div class="choices" role="radiogroup" aria-label="Fuente de datos">
+    ${SOURCES.map(([k,ic,t,d,tag])=>`<button class="choice" role="radio" data-source="${k}" aria-checked="${S.source===k}"><span class="ic">${icon(ic)}</span><span><b>${t}${tag?` <span class="badge llm plain">${tag}</span>`:''}</b><small>${d}</small></span><span class="radio" aria-hidden="true"></span></button>`).join('')}
+   </div>
+   <div class="panel" id="source-panel"></div>
+   <div class="step-h"><span class="n">2</span><h2>Agentes</h2></div>
+   <div class="toggle-row">
+    <label class="switch"><input type="checkbox" id="use-llm" ${S.llm&&llmOk?'checked':''} ${llmOk?'':'disabled'}><span></span><span class="sr-only">Activar razonamiento con LLM</span></label>
+    <div><b>Razonamiento con LLM</b> ${llmOk?`<span class="badge llm plain">${esc(cfg.llm_provider)} · ${esc(cfg.llm_model)}</span>`:'<span class="badge idle plain">no configurado</span>'}
+     <p class="muted small" style="margin-top:3px">Los 4 agentes consultan al LLM sobre los <b>${batch} clientes de mayor riesgo</b>; el resto usa reglas explícitas. Solo viajan indicadores numéricos, nunca códigos de cliente. Sin LLM, los agentes trabajan igual con la red y reglas.</p>
+     <label class="consent" id="consent-row" ${S.llm&&llmOk?'':'hidden'}><input type="checkbox" id="consent" ${S.consent?'checked':''}> Autorizo enviar estos indicadores anónimos al proveedor LLM para este análisis.</label>
+    </div>
+   </div>
+   <div class="run-bar"><p class="muted small">El análisis es temporal: no se guarda en el servidor.</p><button class="btn primary lg" id="run-btn">${icon('play','s')}Iniciar agentes</button></div>
   </div>
-  <div class="pipeline-mini" aria-label="Agentes del sistema">
-   ${['predictivo','retencion','supervisor','estratega'].map((k,i)=>`<div class="pm"><span class="n">${i+1}</span><div><b>Agente ${AGENTS[k].name}</b><small>${AGENTS[k].role}</small></div></div>`).join('')}
-  </div>
- </section>
- <h2>1 · Elige los datos</h2>
- <div class="sources mt" role="group" aria-label="Fuente de datos">
-  ${[['demo','◎','Cartera de ejemplo','300 clientes B2B sintéticos, listos para explorar.'],['csv','⇪','Subir cartera CSV','Hasta 300 clientes con 6 indicadores.'],['single','◉','Un cliente','Ingresa los indicadores manualmente.']].map(([k,ic,t,d])=>`<button class="source" data-source="${k}" aria-pressed="${S.source===k}"><span class="ic" aria-hidden="true">${ic}</span><b>${t}</b><small>${d}</small></button>`).join('')}
- </div>
- <div class="card panel" id="source-panel"></div>
- <h2 class="mt" style="margin-top:26px">2 · Configura y ejecuta</h2>
- <div class="llm-box">
-  <label class="switch"><input type="checkbox" id="use-llm" ${S.llm?'checked':''} ${llmOk?'':'disabled'}><span></span><span class="sr-only">Activar revisión LLM</span></label>
-  <div><b>Revisión con LLM ${llmOk?`<span class="badge llm">${esc(cfg.llm_provider)} · ${esc(cfg.llm_model)}</span>`:'<span class="badge idle">no configurado en el servidor</span>'}</b>
-   <p>Los agentes consultan al LLM para interpretar, elegir acciones, supervisar y redactar el resumen de hasta ${cfg.max_llm_customers||20} clientes prioritarios. Solo se envían indicadores numéricos sin códigos de cliente. Toda respuesta se valida; si falla, se usan reglas explícitas y se informa.</p>
-   <label style="display:flex;gap:8px;margin-top:8px;font-size:13px;align-items:flex-start" id="consent-row" ${S.llm?'':'hidden'}><input type="checkbox" id="consent" ${S.consent?'checked':''}> Autorizo enviar estos indicadores anónimos al proveedor LLM para este análisis.</label>
-  </div>
- </div>
- <div class="run-bar">
-  <p class="muted" style="font-size:13px">El análisis es temporal: no se guarda en el servidor. Exporta el informe o el plan antes de cerrar.</p>
-  <button class="btn primary" id="run-btn">Ejecutar análisis →</button>
+  <aside class="card side-card"><h2>Así trabajan los agentes</h2><p class="muted small" style="margin-top:4px">El Supervisor delega, valida y decide si cada salida pasa. Nada se ejecuta sin tu aprobación.</p>
+   <div class="flow">${ORDER.map(k=>`<div class="flow-item">${av(k)}<div><b>${NAMES[k]}</b><p>${AGENTS[k].role}</p><div class="llm-use">${icon('spark','s')}${AGENTS[k].llm}</div></div></div>`).join('')}
+    <div class="flow-item">${av('usuario')}<div><b>Tú</b><p>Revisas el plan, aceptas o rechazas cada propuesta y exportas.</p></div></div></div>
+   <div class="sizes"><b>¿Cuántos clientes hacen falta?</b> Para probar el sistema bastan 20–30 que cubran todos los casos: así cada agente actúa al menos una vez y el LLM revisa ${batch}. Con 300 se ve la escala, pero el LLM sigue revisando solo ${batch} por su límite de tokens por minuto. Validar el modelo en sí exige miles de clientes históricos reales con su resultado conocido.</div>
+  </aside>
  </div>`;
  renderSourcePanel();
- document.querySelectorAll('[data-source]').forEach(b=>b.onclick=()=>{S.source=b.dataset.source;document.querySelectorAll('[data-source]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderSourcePanel();});
+ document.querySelectorAll('[data-source]').forEach(b=>b.onclick=()=>{S.source=b.dataset.source;document.querySelectorAll('[data-source]').forEach(x=>x.setAttribute('aria-checked',x===b));renderSourcePanel();});
  $('use-llm').onchange=e=>{S.llm=e.target.checked;$('consent-row').hidden=!S.llm;};
  $('consent').onchange=e=>{S.consent=e.target.checked;};
  $('run-btn').onclick=runAnalysis;
 }
 function renderSourcePanel(){
  const p=$('source-panel');
- if(S.source==='demo'){
-  p.innerHTML=`<div class="card-head"><div><h2>Cartera de ejemplo · 300 clientes</h2><p>Distribuidora B2B ficticia. Indicadores generados con la misma regla sintética del entrenamiento.</p></div><a class="btn small" href="/api/example-300.csv">Descargar CSV</a></div>
-  <p class="muted" style="font-size:13.5px">Ideal para recorrer todo el flujo: resumen ejecutivo, matriz valor × riesgo, agentes y plan de acción.</p>`;
+ if(S.source==='demo24'||S.source==='demo300'){
+  const big=S.source==='demo300';
+  p.innerHTML=`<div class="card flat" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><p class="small ink2">${big?'300 clientes sintéticos de una distribuidora B2B ficticia.':'24 clientes sintéticos: 9 de riesgo alto, 6 medio y 9 bajo, los 4 segmentos de valor, las 4 palancas de retención y 1 registro fuera de dominio.'}</p><a class="btn sm" href="/api/example-${big?300:24}.csv">${icon('download','s')}Ver CSV</a></div>`;
  }else if(S.source==='csv'){
-  p.innerHTML=`<div class="card-head"><div><h2>Subir cartera</h2><p>Columnas exactas: <span class="mono">cliente_id, ${FEATURES.join(', ')}</span>. Separador coma o punto y coma.</p></div><a class="btn small" href="/api/template.csv">Plantilla</a></div>
-  <label class="drop" id="drop" tabindex="0"><input type="file" id="csv-file" accept=".csv,text/csv" hidden><b>${S.csv?esc(S.csv.name):'Arrastra tu CSV aquí o haz clic para elegirlo'}</b><span class="muted" style="font-size:13px">Máximo 300 filas y 256 KB. Se valida antes de analizar.</span></label>
-  <div id="csv-preview"></div>`;
-  const input=$('csv-file'),drop=$('drop');
+  const c=S.csv;
+  p.innerHTML=`${c?`<div class="file-chip ${c.error?'bad':''}"><span class="ic">${icon(c.error?'alert':'file')}</span><div><b>${esc(c.name)}</b><div class="small muted">${(c.size/1024).toFixed(1)} KB · ${c.error?'no válido':c.preview?`${c.preview.count} clientes válidos`:'validando…'}</div>${c.error?`<ul class="errors">${c.error.split(' · ').slice(0,6).map(e=>`<li>${esc(e)}</li>`).join('')}</ul>`:''}</div><div class="actions"><button class="btn sm" id="csv-change">Cambiar</button><button class="btn sm ghost" id="csv-remove" aria-label="Quitar archivo">${icon('x','s')}</button></div></div>`:''}
+  <div class="drop" id="drop" role="button" tabindex="0" aria-describedby="drop-hint" ${c&&!c.error?'hidden':''}><span class="ic">${icon('upload')}</span><b>Arrastra tu CSV aquí o haz clic para elegirlo</b><span class="small muted" id="drop-hint">Columnas: <span class="mono">cliente_id, ${FEATURES.join(', ')}</span> · máx. 300 filas y 256 KB</span></div>
+  <input type="file" id="csv-file" accept=".csv,text/csv" hidden>
+  <div id="csv-preview"></div>
+  <p class="small muted mt">¿Sin archivo? <a href="/api/template.csv">Descarga la plantilla</a> o la <a href="/api/example-24.csv">cartera de 24</a>.</p>`;
+  const input=$('csv-file'),drop=$('drop'),pick=()=>{input.value='';input.click();};
   input.onchange=()=>input.files[0]&&loadCsv(input.files[0]);
-  drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click();}};
+  drop.onclick=pick;
+  drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick();}};
   drop.ondragover=e=>{e.preventDefault();drop.classList.add('over');};
   drop.ondragleave=()=>drop.classList.remove('over');
   drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');e.dataTransfer.files[0]&&loadCsv(e.dataTransfer.files[0]);};
-  if(S.csv?.preview)showPreview();
+  if($('csv-change'))$('csv-change').onclick=pick;
+  if($('csv-remove'))$('csv-remove').onclick=()=>{S.csv=null;renderSourcePanel();};
+  if(c?.preview)showPreview();
  }else{
   const d={cliente_id:'B2B-001',antiguedad:24,compras_mensuales:5,monto_promedio:800,reclamos:2,dias_ultima_compra:30,pagos_atrasados:1,...(S.single||{})};
-  p.innerHTML=`<div class="card-head"><div><h2>Indicadores del cliente</h2><p>Usa un código anónimo. Los conteos deben ser enteros.</p></div></div>
-  <form class="form-grid" id="single-form">
-   <div class="field"><label for="f-cliente_id">Código de cliente</label><input id="f-cliente_id" name="cliente_id" value="${esc(d.cliente_id)}" pattern="[A-Za-z0-9_-]{1,48}" required></div>
+  p.innerHTML=`<div class="card flat"><form class="form-grid" id="single-form">
+   <div class="field"><label for="f-cliente_id">Código de cliente</label><input id="f-cliente_id" name="cliente_id" value="${esc(d.cliente_id)}" pattern="[A-Za-z0-9_-]{1,48}" required><small>Código anónimo</small></div>
    ${FEATURES.map(f=>`<div class="field"><label for="f-${f}">${LABELS[f]}</label><input id="f-${f}" name="${f}" type="number" min="0" step="${f==='monto_promedio'?'0.01':'1'}" value="${d[f]}" required><small>Rango del modelo: ${RANGES[f][0]}–${RANGES[f][1]}</small></div>`).join('')}
-  </form>`;
+  </form></div>`;
  }
 }
 async function loadCsv(file){
- if(file.size>256000){notice('El archivo supera 256 KB.','error');return;}
- const text=await file.text();
- S.csv={name:file.name,text,preview:null};
- renderSourcePanel();
+ const base={name:file.name,size:file.size,text:'',preview:null,error:null};
+ if(!/\.csv$/i.test(file.name)&&file.type!=='text/csv'){S.csv={...base,error:'El archivo debe ser .csv'};renderSourcePanel();return;}
+ if(file.size>256000){S.csv={...base,error:'El archivo supera 256 KB'};renderSourcePanel();return;}
+ S.csv={...base,text:await file.text()};renderSourcePanel();
  try{
-  const v=await api('/api/public/validate-csv',{method:'POST',headers:{'Content-Type':'text/csv'},body:text});
-  S.csv.preview=v;showPreview();notice(`${v.count} clientes válidos. Listo para analizar.`,'ok');
- }catch(e){S.csv=null;renderSourcePanel();notice('CSV inválido: '+e.message,'error');}
+  const v=await api('/api/public/validate-csv',{method:'POST',headers:{'Content-Type':'text/csv'},body:S.csv.text});
+  S.csv.preview=v;renderSourcePanel();
+ }catch(e){S.csv.error=e.message;renderSourcePanel();}
 }
 function showPreview(){
  const v=S.csv.preview;
- $('csv-preview').innerHTML=`<p class="mt" style="font-size:13px"><b>${v.count}</b> clientes válidos · vista previa de ${v.preview.length}</p><div class="table-wrap preview"><table><thead><tr><th>cliente_id</th>${FEATURES.map(f=>`<th class="r">${LABELS[f]}</th>`).join('')}</tr></thead><tbody>${v.preview.map(r=>`<tr><td>${esc(r.cliente_id)}</td>${FEATURES.map(f=>`<td class="r num">${r[f]}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+ $('csv-preview').innerHTML=`<div class="table-wrap preview"><table><thead><tr><th>cliente_id</th>${FEATURES.map(f=>`<th class="r">${LABELS[f]}</th>`).join('')}</tr></thead><tbody>${v.preview.map(r=>`<tr><td>${esc(r.cliente_id)}</td>${FEATURES.map(f=>`<td class="r">${r[f]}</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="small muted" style="margin-top:6px">Vista previa de ${v.preview.length} de ${v.count} filas.</p>`;
 }
+
+/* ---------- Live run (NDJSON stream) ---------- */
 async function runAnalysis(){
  if(S.busy)return;
  const useLLM=S.llm&&!!S.config?.llm_configured;
- if(useLLM&&!S.consent){notice('Marca la autorización para enviar indicadores al LLM, o desactiva la revisión LLM.','error');return;}
- let request;
- const q=`?use_llm=${useLLM}&consent=${useLLM}`;
- try{
-  if(S.source==='demo'){
-   if(useLLM){const text=await (await fetch('/api/example-300.csv')).text();request=()=>api('/api/public/analyze-csv'+q,{method:'POST',headers:{'Content-Type':'text/csv'},body:text});}
-   else request=()=>api('/api/demo?size=300',{method:'POST'});
-  }else if(S.source==='csv'){
-   if(!S.csv?.preview){notice('Primero sube un CSV válido.','error');return;}
-   const text=S.csv.text;request=()=>api('/api/public/analyze-csv'+q,{method:'POST',headers:{'Content-Type':'text/csv'},body:text});
-  }else{
-   const form=$('single-form');if(!form.reportValidity())return;
-   const row=Object.fromEntries(new FormData(form));for(const f of FEATURES)row[f]=Number(row[f]);S.single=row;
-   request=()=>api('/api/public/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customers:[row],use_llm:useLLM,consent_external_processing:useLLM})});
-  }
- }catch(e){notice(e.message,'error');return;}
+ if(useLLM&&!S.consent){notice('Marca la autorización para enviar indicadores al LLM, o desactiva el razonamiento con LLM.','error');return;}
+ const q=`use_llm=${useLLM}&consent=${useLLM}`;let url,opts={method:'POST'},label;
+ if(S.source==='demo24'||S.source==='demo300'){const n=S.source==='demo24'?24:300;url=`/api/public/analyze-stream?demo=${n}&${q}`;label=`Cartera de ${n} clientes`;}
+ else if(S.source==='csv'){
+  if(!S.csv?.preview){notice('Primero sube un CSV válido.','error');return;}
+  url=`/api/public/analyze-stream?${q}`;opts={method:'POST',headers:{'Content-Type':'text/csv'},body:S.csv.text};label=S.csv.name;
+ }else{
+  const form=$('single-form');if(!form.reportValidity())return;
+  const row=Object.fromEntries(new FormData(form));for(const f of FEATURES)row[f]=Number(row[f]);S.single=row;
+  url='/api/public/analyze-stream';opts={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customers:[row],use_llm:useLLM,consent_external_processing:useLLM})};label=`Cliente ${row.cliente_id}`;
+ }
  S.busy=true;notice('');
- $('view').innerHTML=`<div class="progress" aria-live="polite">
-  <div class="card"><span class="eyebrow">Ejecutando</span><h2>El Supervisor está coordinando a los agentes…</h2><p class="muted" style="margin-top:6px;font-size:13.5px">${useLLM?'Con LLM, cada agente espera la respuesta del proveedor y la valida: puede tardar hasta un minuto.':'Sin LLM el análisis tarda unos segundos.'}</p></div>
-  ${['predictivo','retencion','supervisor','estratega'].map(k=>`<div class="step running"><span class="st" aria-hidden="true"></span><div><b>${AGENTS[k].name}</b><small>${AGENTS[k].role}</small></div></div>`).join('')}
- </div>`;
+ S.live={label,useLLM,start:performance.now(),received:[],shown:[],result:null,error:null,replay:false,customers:null};
+ updateChrome();
+ location.hash==='#/sala'?viewRoom():location.hash='#/sala';
+ pump();
  try{
-  const run=await request();
-  run.local_label=S.source==='demo'?'Cartera de ejemplo':S.source==='csv'?S.csv.name:'Cliente individual';
+  const res=await fetch(url,opts);
+  if(!res.ok){let body=null;try{body=await res.json();}catch{}throw Error(errorText(body,res.status));}
+  const reader=res.body.getReader(),dec=new TextDecoder();let buf='';
+  for(;;){
+   const {done,value}=await reader.read();if(done)break;
+   buf+=dec.decode(value,{stream:true});let i;
+   while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(line)onEvent(JSON.parse(line));}
+  }
+  if(!S.live.result&&!S.live.error)throw Error('La conexión se cerró antes de terminar.');
+ }catch(e){S.live.error=e.message;notice(e.message,'error');renderRoom();}
+ finally{S.busy=false;}
+}
+function onEvent(e){
+ const L=S.live;
+ if(e.type==='start'){L.customers=e.customers;L.batch=e.llm_batch;L.useLLM=e.use_llm;}
+ else if(e.type==='message'){e.at=performance.now()-L.start;L.received.push(e);}
+ else if(e.type==='result'){
+  const run=e.run;run.local_label=L.label;L.result=run;
   S.run=run;S.page=0;S.filters={query:'',risk:'',quadrant:'',sort:'revenue_at_risk'};S.planFilter='pending';
   updateChrome();
-  if(run.status!=='completed')notice('El análisis no se completó: '+(run.warnings||[]).join(' '),'error');
-  else if(run.warnings?.length)notice(run.warnings[0],'info');
-  location.hash='#/resumen';
- }catch(e){notice(e.message,'error');viewStart();}
- finally{S.busy=false;}
+ }else if(e.type==='error'){L.error=e.detail;}
+}
+// Messages are revealed one by one so a fast run stays readable; timestamps remain the real ones.
+let pumpTimer;
+function pump(){
+ clearTimeout(pumpTimer);
+ const L=S.live;if(!L)return;
+ if(L.shown.length<L.received.length){L.shown.push(L.received[L.shown.length]);if(location.hash==='#/sala')renderRoom();}
+ if(L.shown.length<L.received.length||(!L.result&&!L.error))pumpTimer=setTimeout(pump,L.replay?260:320);
+ else if(location.hash==='#/sala')renderRoom();
+}
+function replay(){
+ if(!S.run)return;
+ S.live={label:S.run.local_label,useLLM:S.run.llm_report.requested,start:0,received:S.run.trace.map(m=>({...m,at:(new Date(m.timestamp)-new Date(S.run.trace[0].timestamp))})),shown:[],result:S.run,error:null,replay:true,customers:S.run.predictions.length};
+ location.hash==='#/sala'?viewRoom():location.hash='#/sala';pump();
+}
+function viewRoom(){
+ if(!S.live&&S.run){replay();return;}
+ $('view').innerHTML=`<div id="room"></div>`;renderRoom();
+}
+function renderRoom(){
+ const L=S.live,box=$('room');if(!L||!box)return;
+ const st=agentStates(L.shown),finished=(L.result||L.error)&&L.shown.length>=L.received.length;
+ const cfg=S.config||{},elapsed=finished&&L.result?L.result.elapsed_ms:L.replay?0:performance.now()-L.start;
+ const stateLabel={waiting:'En espera',working:'Trabajando',llm:'Consultando al LLM',done:'Listo',failed:'Falló'};
+ const lane=k=>{const a=st[k];const cls=finished&&a.state!=='failed'?'done':a.state;
+  return `<article class="lane ${cls}" style="--c:var(--a-${k})"><div class="top">${av(k)}<div><b>${NAMES[k]}</b><div class="state"><span class="dot"></span>${stateLabel[cls]}</div></div></div><p class="role">${AGENTS[k].role}</p>
+  <div class="stats"><span><b>${a.msgs}</b> mensajes</span><span><b>${a.llm}</b> consultas LLM</span>${a.llmFailed?'<span class="badge fail plain">LLM falló</span>':a.llmOk?'<span class="badge ok plain">LLM validado</span>':''}</div></article>`;};
+ const t0=L.shown[0]?.at||0;
+ const r=L.result,rep=r?.agent_report,llmOk=r?Object.values(r.agent_llm||{}).filter(x=>x.status==='validated').length:0;
+ box.innerHTML=`
+ <div class="room-head"><div><div class="kicker">${finished?icon('check','s'):'<span class="dot live"></span>'}${L.replay?'Reproducción de la traza real':finished?'Ejecución terminada':'Ejecución en vivo'}</div><h1>Sala de agentes</h1></div>
+  <div class="room-head meta"><span>${icon('layers','s')}${esc(L.label)}${L.customers?` · ${L.customers} clientes`:''}</span><span>${icon('spark','s')}${L.useLLM?`LLM ${esc(cfg.llm_model||'')} · ${L.batch||cfg.max_llm_customers} clientes priorizados`:'Sin LLM: red neuronal y reglas'}</span><span class="num">${icon('play','s')}${dur(elapsed)}</span></div></div>
+ <div class="lanes">${ORDER.map(lane).join('')}</div>
+ ${finished&&r?`<div class="card done-card mt"><div class="stats"><div><b>${r.trace.length}</b>mensajes entre agentes</div><div><b>${llmOk}/4</b>agentes con LLM validado</div><div><b>${rep.retention.changed_vs_rules||0}</b>decisiones que el LLM cambió</div><div><b>${r.recommendations.filter(x=>x.supervisor_review?.action==='request_review').length}</b>revisiones humanas pedidas</div><div><b>${r.status==='completed'?'Sí':'No'}</b>informe validado</div></div>
+  <div class="actions"><a class="btn" href="#/agentes">${icon('shield','s')}Auditoría</a><a class="btn primary" href="#/resumen">Ver resultados ${icon('arrow','s')}</a></div></div>`:''}
+ ${finished&&L.error?`<div class="card mt" style="border-color:var(--hi)"><b>No se pudo completar.</b> <span class="ink2">${esc(L.error)}</span> <a class="btn sm" href="#/inicio" style="margin-left:8px">Volver</a></div>`:''}
+ <article class="card mt"><div class="card-head"><div><h2>Conversación entre agentes</h2><p>Cada línea es un mensaje real del estado compartido, explicado en lenguaje natural. Abre el detalle para ver el contenido técnico.</p></div>${!finished?`<button class="btn sm" id="skip">Mostrar todo</button>`:''}</div>
+  <div class="feed" aria-live="polite">${L.shown.map((m,i)=>{
+   const isLLM=m.sender==='llm'||m.recipient==='llm',err=m.status==='error';
+   const full=r?.trace?.[m.sequence-1];
+   return `<div class="ev ${err?'err':''}">${av(m.sender,true)}<div><div class="who"><b>${NAMES[m.sender]||esc(m.sender)}</b>→ ${NAMES[m.recipient]||esc(m.recipient)} <span class="tool">${esc(m.tool)}</span>${isLLM?`<span class="badge llm plain">${icon('spark','s')}LLM</span>`:''}${m.status==='retry'?'<span class="badge warn plain">reintento</span>':''}${err?'<span class="badge fail plain">error</span>':''}</div>
+    <div class="say">${esc(narrate(m))}</div>${full?`<details><summary>Contenido técnico</summary><pre>${esc(JSON.stringify(full.payload,null,1).slice(0,3000))}</pre></details>`:''}</div><span class="t">+${dur(m.at-t0)}</span></div>`;}).join('')||'<p class="muted small">Esperando el primer mensaje del Supervisor…</p>'}</div></article>`;
+ if($('skip'))$('skip').onclick=()=>{L.shown=L.received.slice();renderRoom();};
 }
 
 /* ---------- Summary ---------- */
 function viewSummary(){
  const r=S.run,a=r.analytics,ex=r.executive,rev=a.revenue,hi=a.segments.find(s=>s.risk==='ALTO');
  $('view').innerHTML=`
- <div class="page-head"><div><span class="eyebrow">${esc(r.local_label||'Análisis')} · ${new Date(r.created).toLocaleString('es-PE')}</span><h1>Resumen ejecutivo</h1><p>Situación de la cartera, ingreso expuesto y dónde actuar primero.</p></div>
-  <div class="actions"><button class="btn" id="dl-report">Descargar informe JSON</button><a class="btn primary" href="#/plan">Revisar plan de acción →</a></div></div>
- ${ex?`<article class="card brief"><div class="card-head" style="margin-bottom:0"><span class="eyebrow">Agente Estratega · resumen para gerencia</span>${ex.source==='llm'?'<span class="badge llm">Redactado por LLM · cifras verificadas</span>':'<span class="badge rules">Generado por reglas</span>'}</div>
-  <h2>${esc(ex.headline)}</h2><div class="cols"><div><h3>Hallazgos</h3><ul>${ex.findings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><h3>Acciones recomendadas</h3><ul>${ex.actions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div></article>`:''}
+ <div class="page-head"><div><div class="kicker">${esc(r.local_label||'Análisis')} · ${new Date(r.created).toLocaleString('es-PE')}</div><h1>Resumen ejecutivo</h1><p>Lo esencial en 30 segundos: cuánto ingreso está expuesto, quiénes lo concentran y qué proponen los agentes.</p></div>
+  <div class="actions"><button class="btn" id="dl-report">${icon('download','s')}Informe JSON</button><a class="btn primary" href="#/plan">Revisar plan ${icon('arrow','s')}</a></div></div>
+ ${ex?`<article class="card brief"><div class="card-head" style="margin-bottom:0"><div class="kicker" style="margin:0">${av('estratega',true)} Agente Estratega · para gerencia</div>${ex.source==='llm'?`<span class="badge llm plain">${icon('spark','s')}Redactado por LLM · cifras verificadas</span>`:'<span class="badge rules plain">Generado por reglas</span>'}</div>
+  <h2>${esc(ex.headline)}</h2><div class="cols"><div><h3>Hallazgos</h3><ul>${ex.findings.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><h3>Qué hacer</h3><ul>${ex.actions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div>
+  <details class="howto"><summary>Cómo leer estas cifras</summary><ul><li><b>Probabilidad de abandono</b>: estimación de la red neuronal (0–100%). Alto ≥ 70%, medio 40–70%, bajo &lt; 40%.</li><li><b>Ingreso en riesgo</b> = probabilidad × ingreso mensual del cliente. Es una exposición esperada, no una pérdida contable.</li><li><b>Salud</b> = 100 − probabilidad. Útil para comparar clientes de un vistazo.</li></ul></details></article>`:''}
  <div class="grid g-4 mt">
-  <div class="card kpi accent"><div class="label">Ingreso mensual en riesgo</div><div class="value">${money(rev.monthly_at_risk,true)}</div><div class="sub">${pct(rev.share_at_risk)} de ${money(rev.monthly_total,true)} mensuales</div></div>
-  <div class="card kpi"><div class="label">Exposición anualizada</div><div class="value">${money(rev.annual_at_risk,true)}</div><div class="sub">Top 20% de clientes: ${pct(rev.top20_concentration)} del riesgo</div></div>
-  <div class="card kpi"><div class="label">Clientes en riesgo alto</div><div class="value">${hi.count}<span class="muted" style="font-size:16px"> / ${a.count}</span></div><div class="sub">${pct(hi.share)} de la cartera · ${a.segments[1].count} en riesgo medio</div></div>
-  <div class="card kpi"><div class="label">Salud promedio <span title="Health score = 100 × (1 − probabilidad)">ⓘ</span></div><div class="value">${a.health_score}<span class="muted" style="font-size:16px">/100</span></div><div class="sub">${a.out_of_domain_count?`${a.out_of_domain_count} registros fuera de dominio`:'Todos los datos dentro del dominio del modelo'}</div></div>
+  <div class="card kpi hero"><div class="label">Ingreso mensual en riesgo<button class="help" title="Suma de probabilidad × ingreso mensual de cada cliente.">${icon('help','s')}</button></div><div class="value">${money(rev.monthly_at_risk,true)}</div><div class="sub">${pct(rev.share_at_risk)} de ${money(rev.monthly_total,true)} que factura la cartera</div></div>
+  <div class="card kpi"><div class="label">Concentración del riesgo<button class="help" title="Parte del ingreso en riesgo que está en el 20% de clientes más expuestos.">${icon('help','s')}</button></div><div class="value">${pct(rev.top20_concentration)}</div><div class="sub">está en el 20% de clientes más expuestos</div></div>
+  <div class="card kpi"><div class="label">Clientes en riesgo alto</div><div class="value">${hi.count}<small> / ${a.count}</small></div><div class="sub">${a.segments[1].count} más en riesgo medio</div></div>
+  <div class="card kpi"><div class="label">Salud media<button class="help" title="100 × (1 − probabilidad de abandono), promedio de la cartera.">${icon('help','s')}</button></div><div class="value">${a.health_score}<small>/100</small></div><div class="sub">${a.out_of_domain_count?`${a.out_of_domain_count} registro(s) a validar`:'Datos dentro del dominio del modelo'}</div></div>
  </div>
  <div class="grid g-main mt">
-  <article class="card"><div class="card-head"><div><h2>Matriz valor × riesgo</h2><p>Cada punto es un cliente. Haz clic para ver su detalle.</p></div></div>${scatter(r)}
+  <article class="card"><div class="card-head"><div><h2>Dónde está el riesgo</h2><p>Cada punto es un cliente. Derecha = más probable que se vaya; arriba = factura más. Haz clic en uno para ver su ficha.</p></div></div><div id="scatter"></div>
    <div class="legend">${Object.entries(QUADRANTS).map(([k,q])=>`<span><i class="qdot q-${k}"></i>${q.label}</span>`).join('')}</div></article>
-  <article class="card"><div class="card-head"><div><h2>Segmentos de acción</h2><p>Valor alto = ingreso mensual ≥ mediana (${money(a.value_threshold)}).</p></div></div>
-   <div class="quads">${['rescatar','proteger','automatizar','mantener'].map(k=>{const q=a.quadrants[k];return `<button class="quad" data-quad="${k}"><div class="top"><b><i class="qdot q-${k}"></i> ${QUADRANTS[k].label}</b><span class="muted" style="font-size:12px">${QUADRANTS[k].hint}</span></div><div class="big">${q.count}</div><small>${money(q.revenue_at_risk,true)}/mes en riesgo</small></button>`;}).join('')}</div>
-   <p class="muted" style="font-size:12.5px;margin-top:12px">Rescatar: atención personal inmediata · Proteger: cuidar y crecer · Automatizar: acciones escalables de bajo costo · Mantener: seguimiento rutinario.</p></article>
+  <article class="card"><div class="card-head"><div><h2>Qué hacer con cada grupo</h2><p>Valor alto = factura ≥ ${money(a.value_threshold)} al mes (la mediana).</p></div></div>
+   <div class="quads">${[['rescatar','Llamada personal esta semana'],['proteger','Cuidar la relación y crecer'],['automatizar','Acciones masivas de bajo costo'],['mantener','Seguimiento rutinario']].map(([k,what])=>{const q=a.quadrants[k];return `<button class="quad q-${k}" data-quad="${k}"><span class="top"><i class="qdot"></i>${QUADRANTS[k].label}</span><span class="big">${q.count}</span><small>${money(q.revenue_at_risk,true)}/mes en riesgo</small><span class="what">${what}</span></button>`;}).join('')}</div></article>
  </div>
  <div class="grid g-2 mt">
-  <article class="card"><div class="card-head"><div><h2>Prioridades de atención</h2><p>Mayor ingreso mensual en riesgo (probabilidad × ingreso).</p></div><a class="btn small ghost" href="#/clientes">Ver todos →</a></div>
-   ${a.priorities.length?`<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Riesgo</th><th class="r">En riesgo/mes</th><th>Acción propuesta</th></tr></thead><tbody>${a.priorities.slice(0,8).map(x=>`<tr tabindex="0" data-customer="${esc(x.cliente_id)}"><td><b>${esc(x.cliente_id)}</b></td><td>${riskBadge(x.risk)}</td><td class="r num">${money(x.attention_score)}</td><td>${ACTION_LABELS[recOf(x.cliente_id)?.action]||''}</td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">No hay clientes de riesgo medio/alto dentro del dominio del modelo.</p>'}</article>
-  <article class="card"><div class="card-head"><div><h2>Distribución de probabilidad</h2><p>Clientes por tramo de probabilidad estimada.</p></div></div>${histogram(a.histogram)}
-   <h3 style="margin:18px 0 10px">Variables más sensibles en esta cartera</h3>
-   <div class="bars">${a.sensitivities.map(s=>`<div class="bar-row"><span>${LABELS[s.feature]}</span><div class="bar-track"><div class="bar-fill" style="width:${(s.mean_absolute_delta/(a.sensitivities[0].mean_absolute_delta||1)*100).toFixed(1)}%"></div></div><span class="num r">${pp(s.mean_absolute_delta)}</span></div>`).join('')||'<p class="muted">Sin datos dentro del dominio.</p>'}</div>
-   <p class="muted" style="font-size:12px;margin-top:10px">${esc(a.sensitivity_definition)}</p></article>
- </div>
- <p class="muted mt" style="font-size:12.5px">${esc(a.revenue_definition)}</p>`;
+  <article class="card"><div class="card-head"><div><h2>Atender primero</h2><p>Mayor ingreso mensual en riesgo, con la propuesta de los agentes.</p></div><a class="btn sm ghost" href="#/clientes">Ver todos ${icon('arrow','s')}</a></div>
+   ${a.priorities.length?`<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Riesgo</th><th class="r">En riesgo/mes</th><th>Propuesta</th><th>Agentes</th></tr></thead><tbody>${a.priorities.slice(0,7).map(x=>{const p=predOf(x.cliente_id),rc=recOf(x.cliente_id);return `<tr tabindex="0" data-customer="${esc(x.cliente_id)}"><td><b>${esc(x.cliente_id)}</b></td><td>${riskBadge(x.risk)}</td><td class="r">${money(x.attention_score)}</td><td>${ACTION_LABELS[rc?.action]||''}</td><td>${agentChips(p,rc)}</td></tr>`;}).join('')}</tbody></table></div>`:'<p class="muted">No hay clientes de riesgo medio o alto dentro del dominio del modelo.</p>'}</article>
+  <article class="card"><div class="card-head"><div><h2>Qué empuja el riesgo en esta cartera</h2><p>Cuánto cambia la probabilidad, en promedio, si cada indicador estuviera en su valor típico.</p></div></div>
+   <div class="bars">${a.sensitivities.map(s=>`<div class="bar-row"><span>${LABELS[s.feature]}</span><div class="bar-track"><div class="bar-fill" style="width:${(s.mean_absolute_delta/(a.sensitivities[0].mean_absolute_delta||1)*100).toFixed(1)}%"></div></div><span class="num" style="text-align:right">${pp(s.mean_absolute_delta)}</span></div>`).join('')||'<p class="muted">Sin datos dentro del dominio.</p>'}</div>
+   <h3 style="margin:18px 0 8px">Clientes por probabilidad</h3><div id="hist"></div></article>
+ </div>`;
  $('dl-report').onclick=()=>download(`informe_${r.id}.json`,JSON.stringify(r,null,2),'application/json');
  document.querySelectorAll('[data-quad]').forEach(b=>b.onclick=()=>{S.filters={...S.filters,quadrant:b.dataset.quad,risk:''};S.page=0;location.hash='#/clientes';});
- bindCustomerOpeners();
+ $('scatter').innerHTML=scatter(r);$('hist').innerHTML=histogram(a.histogram);
+ bindCustomerOpeners();bindTips();
 }
 function scatter(run){
- const W=640,H=330,L=58,R=12,T=12,B=36,ps=run.predictions;
+ const W=640,H=320,L=56,R=14,T=14,B=40,ps=run.predictions;
  const vals=ps.map(p=>Math.max(1,p.monthly_revenue));
- const lo=Math.log10(Math.min(...vals)),hi=Math.log10(Math.max(...vals))+1e-9,span=Math.max(hi-lo,.5);
+ const lo=Math.log10(Math.min(...vals))-.05,hi=Math.log10(Math.max(...vals))+.05,span=Math.max(hi-lo,.5);
  const x=v=>L+v*(W-L-R),y=v=>T+(1-(Math.log10(Math.max(1,v))-lo)/span)*(H-T-B);
- const ticks=[];for(let e=Math.ceil(lo);e<=Math.floor(hi);e++)ticks.push(10**e);
+ const ticks=[];for(let e=Math.ceil(lo);e<=Math.floor(hi);e++){ticks.push(10**e);if(10**e*3<10**hi)ticks.push(3*10**e);}
  const thr=run.analytics.value_threshold;
- return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Dispersión de clientes por probabilidad de abandono e ingreso mensual">
+ return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Clientes por probabilidad de abandono e ingreso mensual">
   ${[0,.2,.4,.6,.8,1].map(t=>`<line class="grid-line" x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H-B}"/><text x="${x(t)}" y="${H-B+16}" text-anchor="middle">${t*100}%</text>`).join('')}
   ${ticks.map(t=>`<line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${L-8}" y="${y(t)+4}" text-anchor="end">${money(t,true).replace('S/ ','')}</text>`).join('')}
-  <line x1="${x(.4)}" x2="${x(.4)}" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="4 4"/>
-  <line x1="${L}" x2="${W-R}" y1="${y(thr)}" y2="${y(thr)}" stroke="var(--muted)" stroke-dasharray="4 4"/>
-  <text x="${x(.4)+6}" y="${y(thr)-6}">mediana de valor</text>
-  ${ps.map(p=>`<circle class="dotc" data-customer="${esc(p.cliente_id)}" cx="${x(p.probability).toFixed(1)}" cy="${y(p.monthly_revenue).toFixed(1)}" r="${ps.length>100?4:6}" fill="var(--q-${p.quadrant})" fill-opacity=".72"><title>${esc(p.cliente_id)} · ${pct(p.probability)} · ${money(p.monthly_revenue)}/mes</title></circle>`).join('')}
-  <text x="${(L+W-R)/2}" y="${H-4}" text-anchor="middle">Probabilidad de abandono →</text>
-  <text x="14" y="${(T+H-B)/2}" text-anchor="middle" transform="rotate(-90 14 ${(T+H-B)/2})">Ingreso mensual (S/, log)</text>
+  <line class="thr" x1="${x(.4)}" x2="${x(.4)}" y1="${T}" y2="${H-B}"/><text class="thr-label" x="${x(.4)+5}" y="${T+10}">en riesgo →</text>
+  <line class="thr" x1="${L}" x2="${W-R}" y1="${y(thr)}" y2="${y(thr)}"/><text class="thr-label" x="${L+6}" y="${y(thr)-6}">valor alto ↑</text>
+  ${ps.map(p=>`<circle class="pt" data-customer="${esc(p.cliente_id)}" data-tip="<b>${esc(p.cliente_id)}</b>${RISK[p.risk]} · ${pct(p.probability)}<br>${money(p.monthly_revenue)}/mes · ${money(p.revenue_at_risk)} en riesgo<br>${QUADRANTS[p.quadrant].label}" cx="${x(p.probability).toFixed(1)}" cy="${y(p.monthly_revenue).toFixed(1)}" r="${ps.length>100?4.5:7}" fill="var(--q-${p.quadrant})"/>`).join('')}
+  <text x="${(L+W-R)/2}" y="${H-6}" text-anchor="middle">Probabilidad de abandono</text>
+  <text x="12" y="${(T+H-B)/2}" text-anchor="middle" transform="rotate(-90 12 ${(T+H-B)/2})">Ingreso mensual (S/, escala log)</text>
  </svg>`;
 }
 function histogram(h){
- const W=520,H=170,L=30,B=26,T=8,max=Math.max(...h,1),bw=(W-L)/10;
- const color=i=>i>=7?'var(--high)':i>=4?'var(--med)':'var(--low)';
+ const W=520,H=150,L=8,B=24,T=16,max=Math.max(...h,1),bw=(W-L)/10;
+ const color=i=>i>=7?'var(--hi)':i>=4?'var(--md)':'var(--lo)',name=i=>i>=7?'alto':i>=4?'medio':'bajo';
  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Histograma de probabilidades">
-  ${h.map((v,i)=>{const bh=(v/max)*(H-B-T-12);return `<rect x="${L+i*bw+3}" y="${H-B-bh}" width="${bw-6}" height="${bh}" rx="4" fill="${color(i)}" fill-opacity=".85"><title>${i*10}–${i*10+10}%: ${v} clientes</title></rect>${v?`<text x="${L+i*bw+bw/2}" y="${H-B-bh-4}" text-anchor="middle">${v}</text>`:''}<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${i*10}%</text>`;}).join('')}
+  ${h.map((v,i)=>{const bh=Math.max(v?2:0,(v/max)*(H-B-T));return `<rect data-tip="<b>${i*10}–${i*10+10}%</b>${v} clientes · riesgo ${name(i)}" x="${L+i*bw+1}" y="${H-B-bh}" width="${bw-2}" height="${bh}" rx="3" fill="${color(i)}"/>${v?`<text x="${L+i*bw+bw/2}" y="${H-B-bh-4}" text-anchor="middle">${v}</text>`:''}<text x="${L+i*bw+bw/2}" y="${H-7}" text-anchor="middle">${i*10}%</text>`;}).join('')}
   <line class="axis" x1="${L}" x2="${W}" y1="${H-B}" y2="${H-B}"/>
- </svg><div class="legend"><span><i class="qdot" style="background:var(--low)"></i>Bajo &lt;40%</span><span><i class="qdot" style="background:var(--med)"></i>Medio 40–70%</span><span><i class="qdot" style="background:var(--high)"></i>Alto ≥70%</span></div>`;
+ </svg><div class="legend"><span><i class="qdot" style="background:var(--lo)"></i>Bajo &lt;40%</span><span><i class="qdot" style="background:var(--md)"></i>Medio 40–70%</span><span><i class="qdot" style="background:var(--hi)"></i>Alto ≥70%</span></div>`;
 }
+function bindTips(root=document){
+ root.querySelectorAll('[data-tip]').forEach(el=>{
+  el.onmouseenter=e=>showTip(el.dataset.tip,e);el.onmousemove=e=>moveTip(e);el.onmouseleave=hideTip;
+ });
+}
+function showTip(html,e){const t=$('tip');t.innerHTML=html;t.hidden=false;moveTip(e);}
+function moveTip(e){const t=$('tip'),w=t.offsetWidth;t.style.left=Math.min(e.clientX+14,innerWidth-w-8)+'px';t.style.top=(e.clientY+14)+'px';}
+function hideTip(){$('tip').hidden=true;}
 function bindCustomerOpeners(root=document){
  root.querySelectorAll('[data-customer]').forEach(el=>{
   el.onclick=()=>openCustomer(el.dataset.customer);
@@ -246,14 +347,15 @@ function bindCustomerOpeners(root=document){
 function viewCustomers(){
  const f=S.filters;
  $('view').innerHTML=`
- <div class="page-head"><div><span class="eyebrow">${S.run.predictions.length} clientes analizados</span><h1>Clientes</h1><p>Busca, filtra y abre cada cliente para ver por qué está en riesgo y qué proponen los agentes.</p></div></div>
+ <div class="page-head"><div><div class="kicker">${S.run.predictions.length} clientes analizados</div><h1>Clientes</h1><p>Abre un cliente para ver la conversación de los agentes: por qué está en riesgo, qué proponen y qué verificó el Supervisor.</p></div></div>
  <div class="toolbar">
   <input class="search" id="q" type="search" placeholder="Buscar código de cliente…" value="${esc(f.query)}" aria-label="Buscar cliente">
   <div class="seg" role="group" aria-label="Filtrar por riesgo">${[['','Todos'],['ALTO','Alto'],['MEDIO','Medio'],['BAJO','Bajo']].map(([v,l])=>`<button data-risk="${v}" aria-pressed="${f.risk===v}">${l}</button>`).join('')}</div>
-  <select class="search" style="flex:0 1 190px" id="quad" aria-label="Filtrar por segmento"><option value="">Todos los segmentos</option>${Object.entries(QUADRANTS).map(([k,q])=>`<option value="${k}" ${f.quadrant===k?'selected':''}>${q.label}</option>`).join('')}</select>
-  <select class="search" style="flex:0 1 210px" id="sort" aria-label="Ordenar">${[['revenue_at_risk','Mayor ingreso en riesgo'],['probability','Mayor probabilidad'],['monthly_revenue','Mayor ingreso mensual'],['health','Menor salud'],['id','Código']].map(([v,l])=>`<option value="${v}" ${f.sort===v?'selected':''}>${l}</option>`).join('')}</select>
+  <select class="search" style="flex:0 1 180px" id="quad" aria-label="Filtrar por segmento"><option value="">Todos los segmentos</option>${Object.entries(QUADRANTS).map(([k,q])=>`<option value="${k}" ${f.quadrant===k?'selected':''}>${q.label}</option>`).join('')}</select>
+  <select class="search" style="flex:0 1 200px" id="sort" aria-label="Ordenar">${[['revenue_at_risk','Mayor ingreso en riesgo'],['probability','Mayor probabilidad'],['monthly_revenue','Mayor ingreso mensual'],['health','Menor salud'],['id','Código']].map(([v,l])=>`<option value="${v}" ${f.sort===v?'selected':''}>${l}</option>`).join('')}</select>
  </div>
- <div id="table"></div>`;
+ <div id="table"></div>
+ <p class="small muted mt">Columna Agentes: <b>P</b> Predictivo, <b>R</b> Retención, <b>S</b> Supervisor. Punto azul = usó LLM; punto rojo = el Supervisor pidió revisión humana.</p>`;
  $('q').oninput=e=>{S.filters.query=e.target.value;S.page=0;renderTable();};
  document.querySelectorAll('[data-risk]').forEach(b=>b.onclick=()=>{S.filters.risk=b.dataset.risk;S.page=0;document.querySelectorAll('[data-risk]').forEach(x=>x.setAttribute('aria-pressed',x===b));renderTable();});
  $('quad').onchange=e=>{S.filters.quadrant=e.target.value;S.page=0;renderTable();};
@@ -264,58 +366,49 @@ function renderTable(){
  const rows=filterCustomers(S.run,S.filters),size=25,pages=Math.max(1,Math.ceil(rows.length/size));
  S.page=Math.min(S.page,pages-1);
  const view=rows.slice(S.page*size,S.page*size+size);
- $('table').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Riesgo</th><th>Probabilidad</th><th class="r">Ingreso/mes</th><th class="r">En riesgo/mes</th><th class="r">Salud</th><th>Segmento</th><th>Acción propuesta</th></tr></thead><tbody>
-  ${view.map(p=>`<tr tabindex="0" data-customer="${esc(p.cliente_id)}"><td><b>${esc(p.cliente_id)}</b>${p.warnings.length?' <span class="badge MEDIO" title="Fuera del dominio del modelo">⚠ datos</span>':''}</td><td>${riskBadge(p.risk)}</td><td>${probBar(p)}</td><td class="r num">${money(p.monthly_revenue)}</td><td class="r num"><b>${money(p.revenue_at_risk)}</b></td><td class="r num">${p.health_score}</td><td>${quadBadge(p.quadrant)}</td><td>${ACTION_LABELS[p.rec?.action]||''} ${p.rec?.source==='llm'?'<span class="badge llm">LLM</span>':''}</td></tr>`).join('')}
- </tbody></table></div><div class="pager"><span>${rows.length} clientes · página ${S.page+1} de ${pages}</span><div class="actions"><button class="btn small" id="prev" ${S.page?'':'disabled'}>← Anterior</button><button class="btn small" id="next" ${S.page<pages-1?'':'disabled'}>Siguiente →</button></div></div>`
+ $('table').innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Riesgo</th><th>Probabilidad</th><th class="r">Ingreso/mes</th><th class="r">En riesgo/mes</th><th>Segmento</th><th>Propuesta</th><th>Agentes</th></tr></thead><tbody>
+  ${view.map(p=>`<tr tabindex="0" data-customer="${esc(p.cliente_id)}"><td><b>${esc(p.cliente_id)}</b>${p.warnings.length?` <span class="badge warn plain" title="Fuera del dominio del modelo">${icon('alert','s')}datos</span>`:''}</td><td>${riskBadge(p.risk)}</td><td>${probBar(p)}</td><td class="r">${money(p.monthly_revenue)}</td><td class="r"><b>${money(p.revenue_at_risk)}</b></td><td>${quadBadge(p.quadrant)}</td><td>${ACTION_LABELS[p.rec?.action]||''}${changed(p.rec)?' <span class="badge llm plain" title="El LLM eligió una acción distinta a la de las reglas">cambio LLM</span>':''}</td><td>${agentChips(p,p.rec)}</td></tr>`).join('')}
+ </tbody></table></div><div class="pager"><span>${rows.length} clientes · página ${S.page+1} de ${pages}</span><div class="actions"><button class="btn sm" id="prev" ${S.page?'':'disabled'}>Anterior</button><button class="btn sm" id="next" ${S.page<pages-1?'':'disabled'}>Siguiente</button></div></div>`
  :'<div class="empty card"><h2>Sin resultados</h2><p>Ajusta la búsqueda o los filtros.</p></div>';
  if($('prev')){$('prev').onclick=()=>{S.page--;renderTable();};$('next').onclick=()=>{S.page++;renderTable();};}
  bindCustomerOpeners($('table'));
 }
 
-/* ---------- Customer drawer ---------- */
+/* ---------- Customer drawer: the agents' conversation about one customer ---------- */
 let lastFocus=null;
-function gauge(score){
- const r=40,c=2*Math.PI*r,color=score>=60?'var(--low)':score>=30?'var(--med)':'var(--high)';
- return `<svg class="gauge" viewBox="0 0 96 96" role="img" aria-label="Salud ${score} de 100"><circle cx="48" cy="48" r="${r}" fill="none" stroke="var(--line)" stroke-width="9"/><circle cx="48" cy="48" r="${r}" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${c*score/100} ${c}" transform="rotate(-90 48 48)"/><text x="48" y="55" text-anchor="middle">${score}</text></svg>`;
-}
 function factorsHtml(p){
  const max=Math.max(...p.factors.map(f=>Math.abs(f.delta_probability)),.01);
- return p.factors.map(f=>{const w=Math.abs(f.delta_probability)/max*50;return `<div class="factor"><span>${LABELS[f.feature]} <span class="muted num">(${f.value})</span></span><div class="track"><div class="fill ${f.delta_probability>=0?'up':'down'}" style="width:${w.toFixed(1)}%"></div></div><span class="num r" style="color:${f.delta_probability>=0?'var(--high)':'var(--low)'}">${f.delta_probability>=0?'+':'−'}${pp(Math.abs(f.delta_probability))}</span></div>`;}).join('');
+ return p.factors.map(f=>{const w=Math.abs(f.delta_probability)/max*50;return `<div class="factor"><span>${LABELS[f.feature]} <span class="muted num">(${f.value})</span></span><div class="track"><div class="fill ${f.delta_probability>=0?'up':'down'}" style="width:${w.toFixed(1)}%"></div></div><span class="num" style="text-align:right;color:${f.delta_probability>=0?'var(--hi-ink)':'var(--lo-ink)'}">${f.delta_probability>=0?'+':'−'}${pp(Math.abs(f.delta_probability))}</span></div>`;}).join('');
 }
-function simHtml(sim){
- if(!sim)return '<p class="muted" style="font-size:13px">Esta acción no tiene una palanca medible en el modelo (seguimiento o contacto general): no se estima su impacto.</p>';
- return `<div class="sim"><span>Si se logra: <b>${esc(sim.scenario)}</b></span><span class="num r">${pct(sim.risk_reduction+sim.probability_after,1)} <span class="arrow">→</span> <b>${pct(sim.probability_after,1)}</b></span><span class="badge ok">−${pp(sim.risk_reduction)}</span></div>
- <p class="muted" style="font-size:12.5px;margin-top:6px">Ingreso mensual protegido estimado: <b>${money(sim.revenue_protected_monthly)}</b>. Es la respuesta del modelo al cambiar el indicador, no un efecto causal garantizado.</p>`;
-}
+function bubble(k,title,body,extra=''){return `<div class="msg">${av(k,true)}<div class="bubble ${k==='usuario'?'you':''}"><header><b>${NAMES[k]}</b>${extra}</header>${body}</div></div>`;}
 function openCustomer(id){
  const p=predOf(id),r=recOf(id);if(!p)return;
  lastFocus=document.activeElement;
- const d=$('drawer'),interp=p.llm_interpretation,sup=r?.supervisor_review;
- d.innerHTML=`<button class="icon-btn close" id="drawer-close" aria-label="Cerrar">×</button>
- <span class="eyebrow">Ficha de cliente</span><h2 id="drawer-title" style="font-size:22px">${esc(p.cliente_id)}</h2>
- <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 16px">${riskBadge(p.risk)} ${quadBadge(p.quadrant)} ${r?`<span class="badge ${r.priority}">${{URGENTE:'Urgente',ATENCION:'Atención',NORMAL:'Normal'}[r.priority]}</span>`:''}</div>
- ${p.warnings.length?`<div class="notice" style="margin:0 0 14px">⚠ ${esc(p.warnings.join(' · '))}</div>`:''}
- <div class="card"><div class="health">${gauge(p.health_score)}<div class="kv" style="flex:1">
-  <div><span>Probabilidad</span><b class="num">${pct(p.probability,1)}</b></div><div><span>Ingreso mensual</span><b class="num">${money(p.monthly_revenue)}</b></div>
-  <div><span>En riesgo/mes</span><b class="num">${money(p.revenue_at_risk)}</b></div><div><span>Salud</span><b class="num">${p.health_score}/100</b></div></div></div></div>
- <div class="card mt"><div class="card-head"><div><h3>¿Qué explica el riesgo?</h3><p>Cambio en la probabilidad al sustituir cada variable por la media de entrenamiento. Rojo empuja hacia el abandono.</p></div></div>${factorsHtml(p)}
-  ${p.probability>.98||p.probability<.02?'<p class="muted" style="font-size:12.5px;margin-top:8px">La probabilidad está saturada: cambiar una sola variable apenas la mueve porque varias señales actúan a la vez. La simulación de la acción combina la palanca con el resto del perfil.</p>':''}</div>
- ${r?`<div class="card mt"><div class="card-head"><div><h3>Recomendación del Agente de Retención</h3><p>${esc(r.timeframe)} · Responsable: ${esc(r.owner)}</p></div>${srcBadge(r.source)}</div>
-  <b style="font-size:16px">${ACTION_LABELS[r.action]||esc(r.action)}</b>
-  <ol class="steps">${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>
-  <p style="font-size:13px;margin:8px 0 12px"><span class="muted">Verificación de éxito:</span> ${esc(r.success_check)}</p>
-  ${simHtml(r.simulation)}
-  <p class="muted" style="font-size:12px;margin-top:8px">Evidencia citada: ${r.evidence.map(e=>LABELS[e]||e).join(', ')}</p></div>`:''}
- <div class="card mt"><h3 style="margin-bottom:10px">Revisión de los agentes</h3>
-  <div class="review"><header><b>Predictivo</b>${interp?'<span class="badge llm">LLM</span>':'<span class="badge rules">Red neuronal</span>'}</header>${interp?`${interp.action==='review_data'?'Pide validar los datos antes de actuar.':'Interpreta el riesgo con la evidencia:'} ${interp.evidence.map(e=>LABELS[e]||e).join(', ')}.`:'Probabilidad calculada por la red; sin interpretación LLM para este cliente.'}</div>
-  <div class="review"><header><b>Supervisor</b>${sup?(sup.action==='approve_plan'?'<span class="badge ok">Aprueba el plan</span>':'<span class="badge fail">Pide revisión humana</span>'):'<span class="badge rules">Controles deterministas</span>'}</header>${sup?`Evidencia revisada: ${sup.evidence.map(e=>LABELS[e]||e).join(', ')}.`:'Verificó acción permitida, evidencia, plan y simulación recalculada.'}</div>
- </div>
- ${r?`<div class="card mt"><h3 style="margin-bottom:10px">Decisión humana</h3>${decisionHtml(r)}
-  <div class="actions mt"><button class="btn small" id="draft-btn">Preparar borrador</button><button class="btn small" id="sim-btn">Abrir en simulador</button></div><div id="draft"></div></div>`:''}`;
+ const d=$('drawer'),interp=p.llm_interpretation,sup=r?.supervisor_review,sim=r?.simulation;
+ const pushes=p.factors.filter(f=>f.delta_probability>0.005).slice(0,2);
+ const ev=e=>(e||[]).map(x=>(LABELS[x]||x).toLowerCase()).join(', ');
+ const predictive=`<p>Probabilidad de abandono <b>${pct(p.probability,1)}</b> (${RISK[p.risk].toLowerCase()}). ${pushes.length?`Lo que más la empuja: ${pushes.map(f=>`${LABELS[f.feature].toLowerCase()} (+${pp(f.delta_probability)})`).join(' y ')}.`:p.probability>.98?'La probabilidad está saturada: varias señales actúan juntas y ninguna sola la mueve.':'Ningún indicador aislado la eleva de forma marcada.'}</p>
+  ${p.warnings.length?`<p class="note">${icon('alert','s')} ${esc(p.warnings.join(' · '))}</p>`:''}
+  ${interp?`<p class="note">${icon('spark','s')} LLM: ${interp.action==='review_data'?'pide validar los datos antes de actuar':'confirma la lectura del riesgo'} citando ${esc(ev(interp.evidence))}.</p>`:''}
+  <details style="margin-top:8px"><summary class="small muted">Ver los 6 factores</summary>${factorsHtml(p)}</details>`;
+ const retention=r?`<p>Propongo <b>${ACTION_LABELS[r.action]||esc(r.action)}</b> · ${esc(r.owner)}, ${esc(r.timeframe).toLowerCase()}.</p>
+  ${sim?`<div class="sim"><span>Si se logra: ${esc(sim.scenario)}</span><span class="num">${pct(sim.risk_reduction+sim.probability_after,1)} <span class="arrow">→</span> <b>${pct(sim.probability_after,1)}</b></span><span class="badge ok plain">−${pp(sim.risk_reduction)}</span><span class="muted">${money(sim.revenue_protected_monthly)}/mes protegidos</span></div>`:'<p class="note">Acción sin palanca medible en el modelo (contacto o seguimiento): no estimo su impacto.</p>'}
+  ${r.source==='llm'?(changed(r)?`<div class="changed">${icon('spark','s')} Elegido con LLM. Las reglas habrían propuesto «${ACTION_LABELS[r.rule_baseline]}».</div>`:`<p class="note">${icon('spark','s')} El LLM confirmó la acción que proponían las reglas.</p>`):'<p class="note">Elegido por reglas explícitas.</p>'}
+  <details style="margin-top:8px"><summary class="small muted">Pasos y verificación</summary><ol class="steps">${r.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol><p class="small" style="margin-top:6px"><span class="muted">Éxito si:</span> ${esc(r.success_check)}</p></details>`:'';
+ const supervisor=`<p>${sup?(sup.action==='approve_plan'?'Revisé la propuesta con el LLM y es coherente con los indicadores.':'<b>Pido revisión humana</b> antes de aceptar: la propuesta necesita contexto adicional.'):'Verifiqué con controles deterministas: acción permitida, evidencia existente, plan del playbook y simulación recalculada.'}</p>${sup?`<p class="note">Evidencia revisada: ${esc(ev(sup.evidence))}.</p>`:''}`;
+ d.innerHTML=`<div class="drawer-top"><div><div class="kicker">Ficha de cliente</div><h2 id="drawer-title">${esc(p.cliente_id)}</h2><div class="actions" style="margin-top:8px">${riskBadge(p.risk)}${quadBadge(p.quadrant)}${r?prioBadge(r.priority):''}</div></div><button class="icon-btn" id="drawer-close" aria-label="Cerrar">${icon('x')}</button></div>
+ <div class="facts"><div class="fact"><span>Probabilidad</span><b>${pct(p.probability,1)}</b></div><div class="fact"><span>Salud</span><b>${p.health_score}/100</b></div><div class="fact"><span>Ingreso/mes</span><b>${money(p.monthly_revenue,true)}</b></div><div class="fact"><span>En riesgo/mes</span><b>${money(p.revenue_at_risk,true)}</b></div></div>
+ <h3 style="margin:20px 0 8px">Conversación de los agentes</h3>
+ <div class="convo">
+  ${bubble('predictivo','',predictive,interp?srcBadge('llm'):'<span class="badge rules plain">Red neuronal</span>')}
+  ${r?bubble('retencion','',retention,srcBadge(r.source)):''}
+  ${bubble('supervisor','',supervisor,sup?(sup.action==='approve_plan'?'<span class="badge ok plain">Aprueba</span>':'<span class="badge fail plain">Revisión humana</span>'):'<span class="badge ok plain">Controles OK</span>')}
+  ${r?bubble('usuario','',`${decisionHtml(r)}<div class="actions mt"><button class="btn sm" id="draft-btn">${icon('file','s')}Borrador de contacto</button><button class="btn sm" id="sim-btn">${icon('sliders','s')}Probar en simulador</button></div><div id="draft"></div>`):''}
+ </div>`;
  d.hidden=false;$('drawer-backdrop').hidden=false;document.body.style.overflow='hidden';
  $('drawer-close').onclick=closeDrawer;$('drawer-close').focus();
- bindDecisions(d,()=>openCustomer(id));
- if($('draft-btn'))$('draft-btn').onclick=()=>{const pk=actionPackage(S.run,id,S.config?.actions);$('draft').innerHTML=`<p class="muted mt" style="font-size:12.5px">Plantilla para revisión; no se envía nada.</p><pre class="doc">${esc(pk.draft)}</pre><button class="btn small" id="dl-draft">Descargar TXT</button>`;$('dl-draft').onclick=()=>download(`borrador_${id}.txt`,pk.draft,'text/plain;charset=utf-8');};
+ bindDecisions(d,()=>{openCustomer(id);updateChrome();});
+ if($('draft-btn'))$('draft-btn').onclick=()=>{const pk=actionPackage(S.run,id,S.config?.actions);$('draft').innerHTML=`<p class="small muted mt">Plantilla para revisión; no se envía nada.</p><pre class="doc">${esc(pk.draft)}</pre><button class="btn sm" id="dl-draft">${icon('download','s')}Descargar TXT</button>`;$('dl-draft').onclick=()=>download(`borrador_${id}.txt`,pk.draft,'text/plain;charset=utf-8');};
  if($('sim-btn'))$('sim-btn').onclick=()=>{S.sim=Object.fromEntries(FEATURES.map(f=>[f,p.observed[f]]));S.simFrom=id;location.hash='#/simulador';};
 }
 function closeDrawer(){
@@ -324,43 +417,52 @@ function closeDrawer(){
  lastFocus?.focus?.();
 }
 function decisionHtml(r){
- if(r.decision!=='pending')return `<p class="decided ${r.decision}">${r.decision==='approved'?'✓ Aceptada':'✕ Rechazada'} <span class="muted" style="font-weight:400">· registrada solo en esta pestaña; no ejecuta acciones externas.</span></p>`;
- return `<div class="decision"><button class="btn small primary" data-decide="approved" data-id="${esc(r.cliente_id)}">Aceptar</button><button class="btn small danger" data-decide="rejected" data-id="${esc(r.cliente_id)}">Rechazar</button></div>${r.supervisor_review?.action==='request_review'?'<p class="muted" style="font-size:12.5px;margin-top:6px">El Supervisor pidió revisión humana: decide de forma individual.</p>':''}`;
+ if(r.decision!=='pending')return `<p class="decided ${r.decision}">${icon(r.decision==='approved'?'check':'x','s')}${r.decision==='approved'?'Aceptada':'Rechazada'} <span class="muted small" style="font-weight:400">· solo en esta pestaña; no ejecuta acciones externas.</span></p>`;
+ return `<p class="small ink2" style="margin-bottom:8px">¿Apruebas esta propuesta?</p><div class="decision"><button class="btn sm primary" data-decide="approved" data-id="${esc(r.cliente_id)}">Aceptar</button><button class="btn sm danger" data-decide="rejected" data-id="${esc(r.cliente_id)}">Rechazar</button></div>`;
 }
 function bindDecisions(root,after){
  root.querySelectorAll('[data-decide]').forEach(b=>b.onclick=e=>{e.stopPropagation();const r=recOf(b.dataset.id);if(r&&r.decision==='pending'){r.decision=b.dataset.decide;after();}});
 }
 
-/* ---------- Agents ---------- */
+/* ---------- Agents audit ---------- */
 function viewAgents(){
  const r=S.run,rep=r.agent_report,llm=r.llm_report,st=r.agent_llm||{};
- const usage=(r.usage||[]).reduce((s,u)=>s+(u.total_tokens||0),0);
- const card=(k,stats,status)=>`<article class="agent"><div class="role"><span class="av ${k}">${AGENTS[k].initial}</span><div><b>Agente ${AGENTS[k].name}</b><br>${status}</div></div><p>${AGENTS[k].role}</p><ul>${AGENTS[k].tools.map(t=>`<li>${t}</li>`).join('')}</ul><div class="meta">${stats}</div></article>`;
+ const byAgent=k=>(r.usage||[]).filter(u=>u.agent===k).reduce((s,u)=>s+(u.total_tokens||0),0);
+ const msAgent=k=>llm.attempts.filter(a=>a.agent===k).reduce((s,a)=>s+a.elapsed_ms,0);
+ const maxTok=Math.max(1,...ORDER.map(byAgent)),maxMs=Math.max(1,...ORDER.map(msAgent));
+ const statusB=s=>({validated:'<span class="badge ok plain">LLM validado</span>',failed:'<span class="badge fail plain">LLM falló · reglas</span>'}[s]||'<span class="badge idle plain">Sin LLM</span>');
+ const reviews=r.recommendations.filter(x=>x.supervisor_review).length,flags=r.recommendations.filter(x=>x.supervisor_review?.action==='request_review').length;
  $('view').innerHTML=`
- <div class="page-head"><div><span class="eyebrow">Sistema multiagente · ${r.trace.length} mensajes · ${(r.elapsed_ms/1000).toFixed(1)} s</span><h1>Cómo trabajaron los agentes</h1><p>Cada agente tiene una responsabilidad, herramientas propias y un estado compartido. El Supervisor valida antes de entregar; el LLM solo elige dentro de opciones permitidas y sus salidas se verifican.</p></div>
-  <div class="actions"><button class="btn" id="dl-trace">Descargar traza JSON</button></div></div>
- <div class="agents-flow">
-  ${card('predictivo',`<span class="badge rules">${rep.predictive.count} inferencias</span>${rep.predictive.out_of_domain?`<span class="badge MEDIO">${rep.predictive.out_of_domain} fuera de dominio</span>`:''}`,statusBadge(st.predictivo?.status))}
-  ${card('retencion',`<span class="badge llm">${rep.retention.llm_count} por LLM</span><span class="badge rules">${rep.retention.rules_count} por reglas</span>`,statusBadge(st.retencion?.status))}
-  ${card('supervisor',`<span class="badge ${rep.supervisor.validated?'ok':'fail'}">${rep.supervisor.validated?'Informe validado':'No validado'}</span><span class="badge rules">${rep.supervisor.corrections} correcciones</span>`,statusBadge(st.supervisor?.status))}
-  ${card('estratega',`<span class="badge ${rep.strategist?.source==='llm'?'llm':'rules'}">Resumen por ${rep.strategist?.source==='llm'?'LLM':'reglas'}</span>`,statusBadge(st.estratega?.status))}
+ <div class="page-head"><div><div class="kicker">${r.trace.length} mensajes · ${dur(r.elapsed_ms)} · ${llm.attempts.length} llamadas al LLM</div><h1>Auditoría de agentes</h1><p>Qué aportó cada agente, cuánto costó y qué controles se aplicaron. El LLM solo elige entre opciones permitidas y cada respuesta se valida antes de usarse.</p></div>
+  <div class="actions"><button class="btn" id="replay">${icon('play','s')}Reproducir ejecución</button><button class="btn" id="dl-trace">${icon('download','s')}Traza JSON</button></div></div>
+ <div class="metric-row">
+  <div class="metric"><span>Clientes revisados por LLM</span><b>${rep.retention.llm_count}</b><small>de ${r.predictions.length} (máx. ${S.config?.max_llm_customers||12})</small></div>
+  <div class="metric"><span>Decisiones que el LLM cambió</span><b>${rep.retention.changed_vs_rules||0}</b><small>frente a las reglas</small></div>
+  <div class="metric"><span>Segundas opiniones</span><b>${reviews}</b><small>${flags} piden revisión humana</small></div>
+  <div class="metric"><span>Correcciones del Supervisor</span><b>${rep.supervisor.corrections}</b><small>salidas rehechas</small></div>
+  <div class="metric"><span>Resumen ejecutivo</span><b>${rep.strategist?.source==='llm'?'LLM':'Reglas'}</b><small>${rep.strategist?.source==='llm'?'cifras verificadas':'sin LLM o rechazado'}</small></div>
+ </div>
+ <div class="grid g-2 mt">
+  ${ORDER.map(k=>`<article class="card"><div class="card-head"><div style="display:flex;gap:10px;align-items:center">${av(k)}<div><h2>Agente ${NAMES[k]}</h2><p>${AGENTS[k].role}</p></div></div>${statusB(st[k]?.status)}</div>
+   <div class="bars"><div class="bar-row"><span>Tokens LLM</span><div class="bar-track"><div class="bar-fill" style="width:${byAgent(k)/maxTok*100}%"></div></div><span class="num" style="text-align:right">${byAgent(k).toLocaleString('es-PE')}</span></div>
+   <div class="bar-row"><span>Tiempo de LLM</span><div class="bar-track"><div class="bar-fill" style="width:${msAgent(k)/maxMs*100}%"></div></div><span class="num" style="text-align:right">${(msAgent(k)/1000).toFixed(2)} s</span></div></div>
+   <p class="small ink2 mt">${k==='predictivo'?`${rep.predictive.count} inferencias con la red · ${rep.predictive.out_of_domain} fuera de dominio.`:k==='retencion'?`${rep.retention.llm_count} acciones con LLM · ${rep.retention.rules_count} por reglas.`:k==='supervisor'?`Controles: ${rep.supervisor.checks.join(', ').toLowerCase()}.`:`Resumen ${rep.strategist?.source==='llm'?'redactado por LLM y verificado cifra a cifra':'generado por reglas'}.`}${st[k]?.reason?` <span class="muted">${esc(st[k].reason)}</span>`:''}</p></article>`).join('')}
  </div>
  <div class="grid g-main mt">
-  <article class="card"><div class="card-head"><div><h2>Traza de mensajes</h2><p>Registro real de la ejecución, en orden. Abre un mensaje para ver su contenido.</p></div></div><div class="timeline">
-   ${r.trace.map(m=>`<div class="msg"><span class="av ${m.sender}">${AGENTS[m.sender]?.initial||'?'}</span><div><div class="line1"><b>${AGENTS[m.sender]?.name||esc(m.sender)}</b><span class="muted">→ ${AGENTS[m.recipient]?.name||esc(m.recipient)}</span><span class="tool">${esc(m.tool)}</span>${m.status==='ok'?'':`<span class="badge ${m.status==='error'?'fail':m.status==='delegated'?'idle':'MEDIO'}">${esc(m.status)}</span>`}</div>
-   <details><summary>Contenido (${JSON.stringify(m.payload).length.toLocaleString('es-PE')} caracteres)</summary><pre>${esc(JSON.stringify(m.payload,null,1).slice(0,4000))}</pre></details></div></div>`).join('')}
+  <article class="card"><div class="card-head"><div><h2>Traza completa</h2><p>Mensajes reales del estado compartido, en orden.</p></div></div><div class="feed">
+   ${r.trace.map(m=>`<div class="ev ${m.status==='error'?'err':''}">${av(m.sender,true)}<div><div class="who"><b>${NAMES[m.sender]||esc(m.sender)}</b>→ ${NAMES[m.recipient]||esc(m.recipient)} <span class="tool">${esc(m.tool)}</span></div><div class="say">${esc(narrate(m))}</div><details><summary>Contenido técnico</summary><pre>${esc(JSON.stringify(m.payload,null,1).slice(0,4000))}</pre></details></div><span class="t">#${m.sequence}</span></div>`).join('')}
   </div></article>
   <div class="stack">
-   <article class="card"><h2>Uso del LLM</h2><div class="kv mt" style="grid-template-columns:1fr">
-    <div><span>Solicitado</span><b>${llm.requested?'Sí':'No'}</b></div><div><span>Proveedor · modelo</span><b>${esc(llm.provider)} · ${esc(llm.model)}</b></div>
-    <div><span>Llamadas</span><b>${llm.attempts.length}</b></div><div><span>Tokens totales</span><b class="num">${usage.toLocaleString('es-PE')}</b></div>
-    <div><span>Clientes con selección LLM</span><b>${llm.selected_customers}</b></div><div><span>Códigos de cliente enviados</span><b>No</b></div></div>
-    ${llm.attempts.length?`<div class="table-wrap mt"><table><thead><tr><th>Agente</th><th>Intento</th><th>Estado</th><th class="r">ms</th></tr></thead><tbody>${llm.attempts.map(x=>`<tr><td>${AGENTS[x.agent]?.name||esc(x.agent)}</td><td>${x.attempt}</td><td>${x.status==='validated'?'<span class="badge ok">validado</span>':`<span class="badge fail" title="${esc(x.code||'')}">falló</span>`}</td><td class="r num">${Math.round(x.elapsed_ms)}</td></tr>`).join('')}</tbody></table></div>`:''}
-    <p class="muted" style="font-size:12.5px;margin-top:10px">${esc(llm.message)}</p></article>
-   <article class="card"><h2>Controles del Supervisor</h2><ul class="warn-list mt">${rep.supervisor.checks.map(c=>`<li>${esc(c)}</li>`).join('')}<li>Verificación de cifras del resumen ejecutivo</li><li>Ninguna acción externa ejecutada</li></ul></article>
+   <article class="card"><h2>Proveedor LLM</h2><div class="bars mt small">
+    <div class="bar-row" style="grid-template-columns:1fr auto"><span class="muted">Proveedor · modelo</span><b>${esc(llm.provider)} · ${esc(llm.model)}</b></div>
+    <div class="bar-row" style="grid-template-columns:1fr auto"><span class="muted">Tokens totales</span><b class="num">${(r.usage||[]).reduce((s,u)=>s+(u.total_tokens||0),0).toLocaleString('es-PE')}</b></div>
+    <div class="bar-row" style="grid-template-columns:1fr auto"><span class="muted">Códigos de cliente enviados</span><b>Ninguno</b></div></div>
+    ${llm.attempts.length?`<div class="table-wrap mt"><table><thead><tr><th>Agente</th><th>Intento</th><th>Estado</th><th class="r">ms</th></tr></thead><tbody>${llm.attempts.map(x=>`<tr><td>${NAMES[x.agent]||esc(x.agent)}</td><td>${x.attempt}</td><td>${x.status==='validated'?'<span class="badge ok plain">validado</span>':`<span class="badge fail plain" title="${esc(x.code||'')}">falló</span>`}</td><td class="r">${Math.round(x.elapsed_ms)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="small muted mt">Sin llamadas al LLM en esta ejecución.</p>'}
+    <p class="small muted" style="margin-top:10px">${esc(llm.message)}</p></article>
    ${r.warnings.length?`<article class="card"><h2>Advertencias</h2><ul class="warn-list mt">${r.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></article>`:''}
   </div>
  </div>`;
+ $('replay').onclick=replay;
  $('dl-trace').onclick=()=>download(`traza_${r.id}.json`,JSON.stringify({id:r.id,trace:r.trace,llm_report:r.llm_report,agent_llm:r.agent_llm,agent_report:r.agent_report},null,2),'application/json');
 }
 
@@ -372,32 +474,36 @@ function viewPlan(){
  const list=recs.filter(r=>S.planFilter==='all'||r.decision===S.planFilter).map(r=>({r,p:predOf(r.cliente_id)})).sort((a,b)=>order[a.r.priority]-order[b.r.priority]||b.p.revenue_at_risk-a.p.revenue_at_risk);
  const protectedRev=recs.filter(r=>r.decision==='approved'&&r.simulation).reduce((s,r)=>s+r.simulation.revenue_protected_monthly,0);
  $('view').innerHTML=`
- <div class="page-head"><div><span class="eyebrow">Revisión humana</span><h1>Plan de acción</h1><p>Acepta o rechaza cada propuesta. Las decisiones se guardan solo en esta pestaña y en tu exportación: no se envían correos ni se modifica un CRM.</p></div>
-  <div class="actions"><button class="btn" id="export">Exportar plan CSV</button><button class="btn primary" id="bulk" ${eligible&&S.run.status==='completed'?'':'disabled'}>Aceptar elegibles (${eligible})</button></div></div>
+ <div class="page-head"><div><div class="kicker">Decisión humana</div><h1>Plan de acción</h1><p>Acepta o rechaza cada propuesta. Las decisiones quedan en esta pestaña y en tu exportación: no se envían correos ni se modifica un CRM.</p></div>
+  <div class="actions"><button class="btn" id="export">${icon('download','s')}Exportar CSV</button><button class="btn primary" id="bulk" ${eligible&&S.run.status==='completed'?'':'disabled'}>Aceptar elegibles (${eligible})</button></div></div>
  <div class="grid g-4">
   <div class="card kpi"><div class="label">Pendientes</div><div class="value">${count('pending')}</div><div class="sub">${eligible} elegibles para aceptación conjunta</div></div>
-  <div class="card kpi"><div class="label">Aceptadas</div><div class="value">${count('approved')}</div><div class="sub">${count('rejected')} rechazadas</div></div>
-  <div class="card kpi"><div class="label">Revisión humana pedida</div><div class="value">${recs.filter(r=>r.supervisor_review?.action==='request_review').length}</div><div class="sub">Excluidas de la aceptación conjunta</div></div>
-  <div class="card kpi accent"><div class="label">Ingreso protegido (aceptadas)</div><div class="value">${money(protectedRev,true)}</div><div class="sub">Estimación del modelo, por mes</div></div>
+  <div class="card kpi"><div class="label">Aceptadas · rechazadas</div><div class="value">${count('approved')}<small> · ${count('rejected')}</small></div><div class="sub">registradas en esta pestaña</div></div>
+  <div class="card kpi"><div class="label">Revisión humana pedida</div><div class="value">${recs.filter(r=>r.supervisor_review?.action==='request_review').length}</div><div class="sub">se deciden una a una</div></div>
+  <div class="card kpi hero"><div class="label">Ingreso protegido estimado</div><div class="value">${money(protectedRev,true)}</div><div class="sub">por mes, si las aceptadas funcionan</div></div>
  </div>
- <article class="card mt"><div class="toolbar"><div class="seg" role="group" aria-label="Filtrar decisiones">${[['pending','Pendientes'],['approved','Aceptadas'],['rejected','Rechazadas'],['all','Todas']].map(([v,l])=>`<button data-plan="${v}" aria-pressed="${S.planFilter===v}">${l}</button>`).join('')}</div><span class="muted" style="font-size:13px">${list.length} propuestas · orden: prioridad e ingreso en riesgo</span></div>
-  <div id="plan-list">${list.slice(0,S.planLimit).map(({r,p})=>`<div class="plan-row"><div><div class="title"><b data-customer="${esc(r.cliente_id)}" style="cursor:pointer;text-decoration:underline dotted">${esc(r.cliente_id)}</b><span class="badge ${r.priority}">${{URGENTE:'Urgente',ATENCION:'Atención',NORMAL:'Normal'}[r.priority]}</span><span>${ACTION_LABELS[r.action]||esc(r.action)}</span>${srcBadge(r.source)}${r.supervisor_review?.action==='request_review'?'<span class="badge fail">Supervisor: revisar</span>':''}</div>
-   <p>${esc(r.owner)} · ${esc(r.timeframe)} · ${money(p.revenue_at_risk)}/mes en riesgo${r.simulation?` · reducción modelada −${pp(r.simulation.risk_reduction)}`:''}</p></div>${decisionHtml(r)}</div>`).join('')||'<p class="empty">No hay propuestas en este filtro.</p>'}</div>
-  ${list.length>S.planLimit?`<div class="pager"><span>Mostrando ${S.planLimit} de ${list.length}</span><button class="btn small" id="more">Mostrar más</button></div>`:''}
+ <article class="card mt"><div class="toolbar"><div class="seg" role="group" aria-label="Filtrar decisiones">${[['pending','Pendientes'],['approved','Aceptadas'],['rejected','Rechazadas'],['all','Todas']].map(([v,l])=>`<button data-plan="${v}" aria-pressed="${S.planFilter===v}">${l}</button>`).join('')}</div><span class="muted small">${list.length} propuestas · por prioridad e ingreso en riesgo</span></div>
+  <div id="plan-list">${list.slice(0,S.planLimit).map(({r,p})=>`<div class="plan-row"><div><div class="title"><button class="linklike" data-customer="${esc(r.cliente_id)}">${esc(r.cliente_id)}</button>${prioBadge(r.priority)}<span>${ACTION_LABELS[r.action]||esc(r.action)}</span>${srcBadge(r.source)}${changed(r)?'<span class="badge llm plain">cambio LLM</span>':''}${r.supervisor_review?.action==='request_review'?'<span class="badge fail plain">Supervisor: revisar</span>':''}</div>
+   <p>${esc(r.owner)} · ${esc(r.timeframe)} · ${money(p.revenue_at_risk)}/mes en riesgo${r.simulation?` · reducción modelada −${pp(r.simulation.risk_reduction)}`:''}</p></div><div>${decisionHtml(r).replace('<p class="small ink2" style="margin-bottom:8px">¿Apruebas esta propuesta?</p>','')}</div></div>`).join('')||'<p class="empty">No hay propuestas en este filtro.</p>'}</div>
+  ${list.length>S.planLimit?`<div class="pager"><span>Mostrando ${S.planLimit} de ${list.length}</span><button class="btn sm" id="more">Mostrar más</button></div>`:''}
  </article>`;
  document.querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>{S.planFilter=b.dataset.plan;S.planLimit=40;viewPlan();});
  if($('more'))$('more').onclick=()=>{S.planLimit+=40;viewPlan();};
- $('bulk').onclick=()=>{try{const n=approvePendingLocal(S.run);notice(`${n} propuestas aceptadas. Las que el Supervisor marcó para revisión quedan pendientes.`,'ok');viewPlan();}catch(e){notice(e.message,'error');}};
- $('export').onclick=()=>{download(`plan_retencion_${S.run.id}.csv`,planCsv(S.run,S.config?.actions),'text/csv;charset=utf-8');notice('Plan exportado. Incluye responsables, plazos, simulación y decisiones; no crea tareas en un CRM.','ok');};
- bindDecisions($('plan-list'),viewPlan);bindCustomerOpeners($('plan-list'));
+ $('bulk').onclick=()=>{try{const n=approvePendingLocal(S.run);notice(`${n} propuestas aceptadas. Las que el Supervisor marcó para revisión siguen pendientes.`,'ok');viewPlan();updateChrome();}catch(e){notice(e.message,'error');}};
+ $('export').onclick=()=>{download(`plan_retencion_${S.run.id}.csv`,planCsv(S.run,S.config?.actions),'text/csv;charset=utf-8');notice('Plan exportado: responsables, plazos, simulación y decisiones. No crea tareas en un CRM.','ok');};
+ bindDecisions($('plan-list'),()=>{viewPlan();updateChrome();});bindCustomerOpeners($('plan-list'));
 }
 
 /* ---------- Simulator ---------- */
 let simTimer,simSeq=0;
+function gauge(score){
+ const r=36,c=2*Math.PI*r,color=score>=60?'var(--lo)':score>=30?'var(--md)':'var(--hi)';
+ return `<svg class="gauge" viewBox="0 0 84 84" role="img" aria-label="Salud ${score} de 100"><circle cx="42" cy="42" r="${r}" fill="none" stroke="var(--surface-3)" stroke-width="8"/><circle cx="42" cy="42" r="${r}" fill="none" stroke="${color}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c*score/100} ${c}" transform="rotate(-90 42 42)"/><text x="42" y="49" text-anchor="middle">${score}</text></svg>`;
+}
 function viewSimulator(){
  S.sim=S.sim||{antiguedad:24,compras_mensuales:6,monto_promedio:1500,reclamos:3,dias_ultima_compra:40,pagos_atrasados:2};
  $('view').innerHTML=`
- <div class="page-head"><div><span class="eyebrow">Herramienta del Agente de Retención</span><h1>Simulador what-if</h1><p>Mueve los indicadores y observa cómo responde la red neuronal. Es la misma herramienta que usa el Agente de Retención para estimar el impacto de cada acción.${S.simFrom?` Valores iniciales de <b>${esc(S.simFrom)}</b>.`:''}</p></div></div>
+ <div class="page-head"><div><div class="kicker">${av('retencion',true)} Herramienta del Agente de Retención</div><h1>Simulador what-if</h1><p>Mueve los indicadores y mira cómo responde la red neuronal. Es la misma herramienta con la que Retención estima el impacto de cada acción.${S.simFrom?` Valores iniciales de <b>${esc(S.simFrom)}</b>.`:''}</p></div></div>
  <div class="grid g-2">
   <article class="card"><h2>Indicadores</h2><div class="sliders mt">${FEATURES.map(f=>{const [mn,mx,st]=RANGES[f];return `<div class="slider"><label for="s-${f}">${LABELS[f]}<output id="o-${f}">${S.sim[f]}</output></label><input type="range" id="s-${f}" min="${mn}" max="${mx}" step="${st}" value="${Math.min(mx,Math.max(mn,S.sim[f]))}"><small>${mn} – ${mx}</small></div>`;}).join('')}</div></article>
   <div class="stack"><article class="card" id="sim-out"><p class="muted">Calculando…</p></article><article class="card" id="sim-levers"></article></div>
@@ -411,12 +517,12 @@ async function runSim(){
   const res=await api('/api/public/simulate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cliente_id:'SIM-001',...S.sim})});
   if(seq!==simSeq||!$('sim-out'))return;
   const p=res.prediction;
-  $('sim-out').innerHTML=`<div class="health">${gauge(p.health_score)}<div><span class="muted" style="font-size:13px">Probabilidad de abandono</span><div class="big-prob">${pct(p.probability,1)}</div>${riskBadge(p.risk)} <span class="muted" style="font-size:13px">· ${money(p.revenue_at_risk)}/mes en riesgo de ${money(p.monthly_revenue)}</span></div></div>
-   <h3 style="margin:18px 0 6px">Factores</h3>${factorsHtml(p)}`;
-  $('sim-levers').innerHTML=`<h2>Impacto modelado de cada acción</h2><p class="muted" style="font-size:13px;margin-top:4px">Probabilidad si la palanca de la acción se resuelve. Solo las acciones permitidas para estos indicadores pueden recomendarse.</p>
-   <div class="table-wrap mt"><table><thead><tr><th>Acción</th><th>Escenario</th><th class="r">Después</th><th class="r">Reducción</th><th class="r">S/ protegidos/mes</th></tr></thead><tbody>
-   ${Object.entries(res.levers).map(([a,s])=>`<tr><td>${ACTION_LABELS[a]} ${res.allowed_actions.includes(a)?'':'<span class="badge idle">no aplica</span>'}</td><td>${s?esc(s.scenario):'—'}</td><td class="r num">${s?pct(s.probability_after,1):'—'}</td><td class="r num">${s?'−'+pp(s.risk_reduction):'—'}</td><td class="r num">${s?money(s.revenue_protected_monthly):'—'}</td></tr>`).join('')}
-   </tbody></table></div>${p.warnings.length?`<p class="muted mt" style="font-size:12.5px">⚠ ${esc(p.warnings.join(' · '))}</p>`:''}`;
+  $('sim-out').innerHTML=`<div class="health">${gauge(p.health_score)}<div><span class="muted small">Probabilidad de abandono</span><div class="big-prob">${pct(p.probability,1)}</div><div class="actions" style="margin-top:6px">${riskBadge(p.risk)}<span class="muted small">${money(p.revenue_at_risk)}/mes en riesgo de ${money(p.monthly_revenue)}</span></div></div></div>
+   <h3 style="margin:16px 0 6px">Qué la empuja</h3>${factorsHtml(p)}`;
+  $('sim-levers').innerHTML=`<h2>Impacto de cada acción</h2><p class="muted small" style="margin-top:3px">Probabilidad si la palanca se resuelve. Solo las acciones aplicables pueden recomendarse.</p>
+   <div class="table-wrap mt"><table><thead><tr><th>Acción</th><th>Escenario</th><th class="r">Después</th><th class="r">Reducción</th><th class="r">Protegido/mes</th></tr></thead><tbody>
+   ${Object.entries(res.levers).map(([a,s])=>`<tr><td>${ACTION_LABELS[a]} ${res.allowed_actions.includes(a)?'':'<span class="badge idle plain">no aplica</span>'}</td><td>${s?esc(s.scenario):'—'}</td><td class="r">${s?pct(s.probability_after,1):'—'}</td><td class="r">${s?'−'+pp(s.risk_reduction):'—'}</td><td class="r">${s?money(s.revenue_protected_monthly):'—'}</td></tr>`).join('')}
+   </tbody></table></div>${p.warnings.length?`<p class="small muted mt">${icon('alert','s')} ${esc(p.warnings.join(' · '))}</p>`:''}`;
  }catch(e){if($('sim-out'))$('sim-out').innerHTML=`<p class="muted">${esc(e.message)}</p>`;}
 }
 
@@ -426,43 +532,44 @@ async function viewModel(){
  if(!S.metrics){try{S.metrics=await api('/api/metrics');}catch{S.metrics={status:'error'};}}
  const m=S.metrics,k=m.metrics||{},cm=k.confusion_matrix||[[0,0],[0,0]];
  $('view').innerHTML=`
- <div class="page-head"><div><span class="eyebrow">Transparencia</span><h1>Modelo y método</h1><p>Qué hace cada componente, cómo se midió y qué falta para usarlo en una empresa real.</p></div></div>
- ${m.status==='measured'?`<div class="grid g-4">${[['AUC',k.auc.toFixed(3),'Capacidad de ordenar por riesgo'],['Exactitud',pct(k.accuracy,1),`Línea base “todos abandonan”: ${pct(m.baseline.accuracy,1)}`],['Precisión · Recall',`${pct(k.precision,0)} · ${pct(k.recall,0)}`,`F1 ${k.f1.toFixed(3)}`],['Brier',k.brier.toFixed(3),'Error de probabilidad (menor es mejor)']].map(([l,v,s])=>`<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`).join('')}</div>
+ <div class="page-head"><div><div class="kicker">Transparencia</div><h1>Modelo y método</h1><p>Qué hace cada componente, cómo se midió y qué falta para usarlo en una empresa real.</p></div></div>
+ ${m.status==='measured'?`<div class="grid g-4">${[['AUC',k.auc.toFixed(3),'Capacidad de ordenar clientes por riesgo'],['Exactitud',pct(k.accuracy,1),`Línea base «todos abandonan»: ${pct(m.baseline.accuracy,1)}`],['Precisión · Recall',`${pct(k.precision,0)} · ${pct(k.recall,0)}`,`F1 ${k.f1.toFixed(3)}`],['Brier',k.brier.toFixed(3),'Error de probabilidad (menor es mejor)']].map(([l,v,s])=>`<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`).join('')}</div>
  <div class="grid g-2 mt"><article class="card"><div class="card-head"><div><h2>Curva ROC</h2><p>${m.n.toLocaleString('es-PE')} ejemplos sintéticos nuevos (semilla ${m.seed}).</p></div></div>${roc(m.roc||[])}</article>
-  <article class="card"><h2>Matriz de confusión (umbral 50%)</h2><div class="cm mt"><div class="hd"></div><div class="hd">Pred. se queda</div><div class="hd">Pred. abandona</div><div class="hd">Real se queda</div><div class="tp">${cm[0][0]}</div><div>${cm[0][1]}</div><div class="hd">Real abandona</div><div>${cm[1][0]}</div><div class="tp">${cm[1][1]}</div></div>
-   <p class="muted" style="font-size:12.5px;margin-top:14px">${esc(m.note)}</p></article></div>`:'<div class="card"><p class="muted">Evaluación no disponible.</p></div>'}
+  <article class="card"><h2>Matriz de confusión (umbral 50%)</h2><div class="cm mt"><div class="hd"></div><div class="hd">Predice: se queda</div><div class="hd">Predice: abandona</div><div class="hd">Real: se queda</div><div class="tp">${cm[0][0]}</div><div>${cm[0][1]}</div><div class="hd">Real: abandona</div><div>${cm[1][0]}</div><div class="tp">${cm[1][1]}</div></div>
+   <p class="small muted" style="margin-top:14px">${esc(m.note)}</p></article></div>`:'<div class="card"><p class="muted">Evaluación no disponible.</p></div>'}
  <div class="grid g-2 mt">
   <article class="card prose"><h2>Arquitectura</h2>
-   <ul><li><b>Red neuronal</b> densa 6→32→16→8→1 (ReLU, sigmoide), pesos exportados del notebook y ejecutados en Python puro. Riesgo: bajo &lt;40%, medio 40–70%, alto ≥70%.</li>
-   <li><b>Explicabilidad local</b>: cambio de probabilidad al sustituir cada variable por su media de entrenamiento.</li>
-   <li><b>Valor de negocio</b>: ingreso mensual = compras × monto promedio; ingreso en riesgo = probabilidad × ingreso; salud = 100 × (1 − probabilidad).</li>
-   <li><b>Simulador what-if</b>: re-ejecuta la red con la palanca de cada acción resuelta (reclamos, pagos, recencia).</li>
-   <li><b>Cuatro agentes</b> con estado compartido y mensajes trazables: Supervisor, Predictivo, Retención y Estratega. Proveedor LLM: ${esc(S.config?.llm_provider||'—')} (${esc(S.config?.llm_model||'—')}).</li></ul></article>
+   <ul><li><b>Red neuronal</b> densa 6→32→16→8→1 (ReLU, sigmoide), pesos exportados del notebook y ejecutados en Python. Riesgo: bajo &lt; 40%, medio 40–70%, alto ≥ 70%.</li>
+   <li><b>Explicación local</b>: cambio de probabilidad al llevar cada indicador a su media de entrenamiento.</li>
+   <li><b>Valor de negocio</b>: ingreso mensual = compras × monto; ingreso en riesgo = probabilidad × ingreso; salud = 100 × (1 − probabilidad).</li>
+   <li><b>What-if</b>: re-ejecuta la red con la palanca de cada acción resuelta (reclamos, pagos, recencia).</li>
+   <li><b>Cuatro agentes</b> con estado compartido y mensajes trazables, transmitidos en vivo. LLM: ${esc(S.config?.llm_provider||'—')} · ${esc(S.config?.llm_model||'—')}, sobre los ${S.config?.max_llm_customers||12} clientes de mayor riesgo.</li></ul></article>
   <article class="card prose"><h2>Barreras de seguridad</h2>
-   <ul><li>El LLM nunca cambia probabilidades: solo elige entre acciones permitidas para cada cliente, con salida JSON restringida por esquema.</li>
-   <li>Cada respuesta se valida: índices completos, acción permitida, evidencia existente. Si falla, se usan reglas y se informa.</li>
-   <li>El resumen del Estratega se rechaza si contiene cifras que no están en los datos verificados.</li>
-   <li>Sin códigos de cliente hacia el proveedor; presupuesto diario y límites de tiempo y mensajes.</li>
+   <ul><li>El LLM nunca cambia probabilidades: elige entre acciones permitidas, con salida JSON restringida por esquema.</li>
+   <li>Cada respuesta se valida (índices completos, acción permitida, evidencia existente); si falla, se usan reglas y se informa.</li>
+   <li>El resumen del Estratega se rechaza si cita cifras que no están en los datos; su titular siempre se calcula sin LLM.</li>
+   <li>Sin códigos de cliente hacia el proveedor; presupuesto diario, reintento breve ante límite de cuota y tope de 60 s / 32 mensajes.</li>
    <li>Decisión humana obligatoria; ninguna acción externa se ejecuta.</li></ul></article>
  </div>
  <article class="card prose mt"><h2>Del prototipo a una empresa real</h2>
   <p>El modelo se entrenó con datos sintéticos: las cifras demuestran el flujo, no predicen clientes reales. Para un piloto:</p>
   <ul><li><b>Definir abandono</b> con negocio (p. ej. sin compras en 90 días) y el horizonte de alerta.</li>
-  <li><b>Reentrenar</b> con históricos reales (CRM/ERP) y validar en periodos posteriores (validación temporal) contra una regla simple.</li>
+  <li><b>Reentrenar</b> con históricos reales (CRM/ERP) y validar en periodos posteriores contra una regla simple.</li>
   <li><b>Calibrar</b> probabilidades y fijar umbrales según la capacidad del equipo comercial.</li>
-  <li><b>Medir impacto</b> con grupo de control: comparar tasa de retención de clientes contactados vs. no contactados.</li>
-  <li><b>Operar</b>: usuarios con roles, base de datos persistente, integración con CRM y monitoreo de deriva del modelo.</li></ul></article>`;
+  <li><b>Medir impacto</b> con grupo de control: retención de contactados frente a no contactados.</li>
+  <li><b>Operar</b>: roles, base persistente, integración con CRM y monitoreo de deriva.</li></ul></article>`;
 }
 function roc(points){
- const W=360,H=260,L=36,B=28,T=8,R=8,x=v=>L+v*(W-L-R),y=v=>T+(1-v)*(H-T-B);
+ const W=360,H=250,L=34,B=30,T=8,R=8,x=v=>L+v*(W-L-R),y=v=>T+(1-v)*(H-T-B);
  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Curva ROC">${[0,.25,.5,.75,1].map(t=>`<line class="grid-line" x1="${x(t)}" x2="${x(t)}" y1="${T}" y2="${H-B}"/><line class="grid-line" x1="${L}" x2="${W-R}" y1="${y(t)}" y2="${y(t)}"/><text x="${x(t)}" y="${H-B+14}" text-anchor="middle">${t}</text><text x="${L-6}" y="${y(t)+4}" text-anchor="end">${t}</text>`).join('')}
- <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--muted)" stroke-dasharray="4 4"/>
- <polyline fill="none" stroke="var(--brand)" stroke-width="2.5" points="${points.map(([a,b])=>`${x(a).toFixed(1)},${y(b).toFixed(1)}`).join(' ')}"/>
- <text x="${(L+W)/2}" y="${H-2}" text-anchor="middle">Falsos positivos</text></svg>`;
+ <line class="thr" x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}"/>
+ <polyline fill="none" stroke="var(--brand)" stroke-width="2" points="${points.map(([a,b])=>`${x(a).toFixed(1)},${y(b).toFixed(1)}`).join(' ')}"/>
+ <text x="${(L+W)/2}" y="${H-2}" text-anchor="middle">Tasa de falsos positivos</text></svg>`;
 }
 
 /* ---------- Boot ---------- */
 async function boot(){
+ document.querySelectorAll('[data-icon]').forEach(el=>{el.outerHTML=icon(el.dataset.icon);});
  $('menu').onclick=()=>{const o=$('sidebar').classList.toggle('open');$('menu').setAttribute('aria-expanded',o);};
  $('drawer-backdrop').onclick=closeDrawer;
  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
@@ -471,8 +578,9 @@ async function boot(){
   S.config=await api('/api/config');
   const llm=$('sys-llm');
   llm.querySelector('.dot').className='dot '+(S.config.llm_configured?'ok':'off');
-  llm.querySelector('small').textContent=S.config.llm_configured?`${S.config.llm_provider} · ${S.config.llm_model}`:'No configurado · reglas';
+  llm.querySelector('.v').textContent=S.config.llm_configured?`${S.config.llm_provider} activo`:'no configurado';
   $('sys-model').querySelector('.dot').className='dot ok';
+  S.llm=!!S.config.llm_configured;
  }catch{notice('No se pudo conectar con el servidor. Recarga la página.','error');}
  updateChrome();route();
 }

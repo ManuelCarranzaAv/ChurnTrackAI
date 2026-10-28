@@ -178,15 +178,16 @@ def test_300_llm_selection_is_bounded_and_honest(client):
     class Stub:
         key='test-double'
         async def choose(self,payload):
-            assert len(payload)==20
+            assert len(payload)==12
             assert [p['probability'] for p in payload]==sorted([p['probability'] for p in payload],reverse=True)
             return LLMResponse(choices=[{'index':p['index'],'action':p['allowed_actions'][0],'evidence':['probability']} for p in payload]),{'provider':'TEST_DOUBLE'}
     client.app.state.supervisor.retention.provider=Stub()
     rows=[{**ROW,'cliente_id':f'C-{i}','dias_ultima_compra':i%120+1} for i in range(300)]
     run=client.post('/api/analyze',json={'customers':rows,'use_llm':True,'consent_external_processing':True},headers=AUTH).json()
     assert run['status']=='completed' and run['mode']=='mixed'
-    assert sum(r['source']=='llm' for r in run['recommendations'])==20
-    assert sum(r['source']=='rules' for r in run['recommendations'])==280
+    # Default LLM batch (LLM_MAX_CUSTOMERS) is 12: sized for free-tier tokens per minute.
+    assert sum(r['source']=='llm' for r in run['recommendations'])==12
+    assert sum(r['source']=='rules' for r in run['recommendations'])==288
 
 def test_rate_limit(client):
     for _ in range(30):

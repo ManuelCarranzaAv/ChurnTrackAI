@@ -338,6 +338,21 @@ def executive_facts(analytics):
         'clientes_prioritarios': [f"{t['cliente_id']} ({money(t['attention_score'])}/mes en riesgo)" for t in analytics['priorities'][:3]],
     }
 
+def fact_sentences(f):
+    return [
+        f"Clientes analizados: {f['clientes']}.",
+        f"Clientes con riesgo alto: {f['clientes_riesgo_alto']} ({f['porcentaje_riesgo_alto']} de los clientes). Clientes con riesgo medio: {f['clientes_riesgo_medio']}.",
+        f"Ingreso mensual total de la cartera: {f['ingreso_mensual_total']}.",
+        f"Ingreso mensual en riesgo: {f['ingreso_mensual_en_riesgo']} ({f['porcentaje_ingreso_en_riesgo']} del ingreso mensual total).",
+        f"Ingreso en riesgo anualizado (12 meses): {f['ingreso_anual_en_riesgo']}.",
+        f"El 20% de clientes con mayor ingreso en riesgo concentra el {f['porcentaje_del_ingreso_en_riesgo_que_concentra_el_top20_de_clientes']} del ingreso mensual en riesgo.",
+        f"Salud promedio de la cartera: {f['salud_promedio']} sobre 100.",
+        f"Segmento Rescatar (alto valor y en riesgo): {f['cuadrante_rescatar']} clientes, con {f['ingreso_en_riesgo_rescatar']} de ingreso mensual en riesgo.",
+        f"Segmento Automatizar (menor valor y en riesgo): {f['cuadrante_automatizar']} clientes. Segmento Proteger (alto valor, estable): {f['cuadrante_proteger']} clientes.",
+        f"Registros fuera del dominio del modelo: {f['fuera_de_dominio']}.",
+        f"Variables con mayor sensibilidad en el modelo: {', '.join(f['variables_mas_sensibles']) or 'sin datos'}.",
+    ]
+
 def rule_summary(f):
     findings = [
         f"{f['clientes_riesgo_alto']} de {f['clientes']} clientes ({f['porcentaje_riesgo_alto']}) tienen riesgo alto de abandono.",
@@ -376,7 +391,8 @@ class StrategistAgent:
                 report['reason'] = 'Presupuesto diario agotado.'
             else:
                 # Only aggregates are shared: customer codes stay out of the provider request.
-                shared = {k: v for k, v in facts.items() if k != 'clientes_prioritarios'}
+                # Self-describing sentences: each figure travels with its meaning, so it is not re-labelled.
+                shared = {'hechos_verificados': fact_sentences(facts)}
                 state.send('estratega','llm','executive_summary_request',{'facts':shared,'identifiers_removed':True})
                 start = time.perf_counter()
                 try:

@@ -124,7 +124,7 @@ def llm_batch():
     # Free LLM tiers limit tokens per minute; 12 customers ≈ 6.5k tokens across four agents.
     return max(1, min(20, int(os.getenv('LLM_MAX_CUSTOMERS', '12'))))
 
-async def review_stage(stage, request, state, provider, store):
+async def review_stage(stage, request, state, provider, store, model=None):
     report = {'status':'not_called','checked_indices':[],'choices':[]}
     state.agent_llm[stage] = report
     if not request.use_llm or not provider.key or not hasattr(provider,'review'):
@@ -143,6 +143,8 @@ async def review_stage(stage, request, state, provider, store):
         if stage=='supervisor':
             rec = state.recommendations[i]
             row['proposal'] = {'action':rec.action,'evidence':rec.evidence,'steps':rec.steps}
+            # The reviewer sees the same what-if evidence the retention agent used, so it can judge the choice.
+            row['action_impacts'] = impacts(model, p)
         payload.append(row)
     state.send(stage,'llm',stage+'_llm_request',{'input':payload,'identifiers_removed':True})
     start = time.perf_counter()
@@ -280,7 +282,7 @@ class SupervisorAgent:
             state.send('usuario','supervisor','analysis_request', {'customer_count':len(request.customers),'requested_llm':request.use_llm,'demo':demo})
             state.send('supervisor','predictivo','delegate_prediction',{'task':'validate, infer, explain'},'delegated')
             self.predictive.execute(request,state)
-            await review_stage('predictivo',request,state,self.retention.provider,self.store)
+            await review_stage('predictivo',request,state,self.retention.provider,self.store,self.model)
             state.send('supervisor','retencion','delegate_retention',{'prediction_message':3,'task':'select grounded actions'},'delegated')
             await self.retention.execute(request,state)
             if not self.validate(state):
@@ -289,7 +291,7 @@ class SupervisorAgent:
                 await self.retention.execute(request,state,correction=True)
             if not self.validate(state):
                 raise RuntimeError('SUPERVISOR_REJECTED')
-            await review_stage('supervisor',request,state,self.retention.provider,self.store)
+            await review_stage('supervisor',request,state,self.retention.provider,self.store,self.model)
             state.send('supervisor','estratega','delegate_executive_summary',{'task':'portfolio summary from verified aggregates'},'delegated')
             await self.strategist.execute(request,state,portfolio(state.predictions),self.retention.provider)
             state.send('supervisor','usuario','validated_report',{'approved_for_human_review':True,'external_actions_executed':0})

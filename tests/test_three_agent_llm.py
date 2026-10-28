@@ -66,3 +66,17 @@ def test_public_custom_budget_prevents_all_llm_calls(client):
     for _ in range(10):assert client.app.state.store.reserve_public_demo(10)
     run=client.post('/api/public/analyze',json={'customers':[ROW],'use_llm':True,'consent_external_processing':True}).json()
     assert provider.calls==[] and run['mode']=='rules' and run['warnings']
+
+def test_supervisor_reviews_with_what_if_evidence(client):
+    seen={}
+    class Spy(ThreeStageProvider):
+        async def review(self,payload,stage):
+            seen[stage]=payload
+            return await super().review(payload,stage)
+    client.app.state.supervisor.retention.provider=Spy()
+    row={**ROW,'reclamos':6,'pagos_atrasados':3,'dias_ultima_compra':90}
+    client.post('/api/public/analyze',json={'customers':[row],'use_llm':True,'consent_external_processing':True})
+    sup=seen['supervisor'][0]
+    assert sup['proposal']['action'] in sup['action_impacts'] or sup['proposal']['action'] in ('contact','monitor')
+    assert set(sup['action_impacts'])<={'claims','payments','reactivate'} and sup['action_impacts']
+    assert 'action_impacts' not in seen['predictivo'][0]

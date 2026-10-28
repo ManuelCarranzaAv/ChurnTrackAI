@@ -1,4 +1,5 @@
 import asyncio
+import re
 import json
 import os
 import httpx
@@ -113,7 +114,7 @@ def explain_error(code):
     if '401' in code or '403' in code or 'API_KEY' in code:
         return 'El proveedor LLM rechazó la credencial o sus permisos. Revisa la clave del proveedor configurado en Render.'
     if '429' in code:
-        return 'El proveedor LLM alcanzó su cuota. Revisa la cuota en la cuenta del proveedor.'
+        return 'El LLM alcanzó su límite de tokens por minuto (plan gratuito). Espera un minuto y vuelve a intentarlo; mientras, el agente usa reglas explícitas.'
     if '404' in code:
         return 'El modelo configurado no está disponible para generar respuestas. Revisa el modelo del proveedor configurado.'
     if '503' in code or 'Timeout' in code or 'Connect' in code:
@@ -183,6 +184,15 @@ def retry_delay(response):
     return max(delay, 0.5) if delay <= MAX_RETRY_WAIT else None
 
 
+def groq_error_code(response):
+    """Groq's machine-readable error code (e.g. json_validate_failed); never the message body."""
+    try:
+        code = str(response.json().get('error', {}).get('code') or '')
+    except (ValueError, AttributeError):
+        code = ''
+    return code if re.fullmatch(r'[a-z_]{3,40}', code) else 'PROVIDER_REJECTED'
+
+
 class GroqProvider:
     name = 'groq'
     api = 'chat/completions'
@@ -194,6 +204,13 @@ class GroqProvider:
         fallback = os.getenv('GROQ_FALLBACK_MODEL', 'openai/gpt-oss-20b').strip()
         self.models = [self.model] + ([fallback] if fallback and fallback != self.model else [])
 
+    # Decisions (retention, supervisor) go to the primary model first; interpretation and the brief start on the
+    # second one. Spreading a run over both per-model quotas lets back-to-back analyses stay within free limits.
+    LIGHT_STAGES = {'predictivo', 'estratega'}
+
+    def order(self, stage):
+        return self.models[::-1] if stage in self.LIGHT_STAGES else self.models
+
     async def review(self, payload, stage):
         return await self.choose(payload,stage)
 
@@ -203,28 +220,29 @@ class GroqProvider:
             # Stated explicitly so the model does not skip a customer.
             data['indices_requeridos'] = [row[0] for row in data['rows']]
         system = STAGE_PROMPTS.get(stage,SYSTEM_PROMPT)+(' Devuelve exactamente una selección por cada valor de indices_requeridos.' if isinstance(data, dict) else '')
-        content, usage = await self.generate(system, data, provider_schema(stage), stage+'_choices', min(3072,768+len(payload)*70))
+        content, usage = await self.generate(system, data, provider_schema(stage), stage+'_choices', min(3072,1024+len(payload)*90), self.order(stage))
         try:
             return LLMResponse.model_validate_json(content), usage
         except ValueError:
             raise ProviderError('ValidationError') from None
 
     async def narrate(self, facts):
-        content, usage = await self.generate(STRATEGIST_PROMPT, facts, ExecutiveSummary.model_json_schema(), 'executive_summary', 1200)
+        content, usage = await self.generate(STRATEGIST_PROMPT, facts, ExecutiveSummary.model_json_schema(), 'executive_summary', 1200, self.order('estratega'))
         try:
             return json.loads(content), usage
         except ValueError:
             raise ProviderError('ValidationError') from None
 
-    async def generate(self, system, data, schema, name, max_tokens):
+    async def generate(self, system, data, schema, name, max_tokens, models=None):
         if not self.key:
             raise ProviderError('LLM_NOT_CONFIGURED')
+        models = models or self.models
         messages = [{'role': 'system', 'content': system},
                     {'role': 'user', 'content': json.dumps(data,separators=(',',':'),ensure_ascii=False)}]
         waited, error = 0.0, 'HTTP_503_PROVIDER_REJECTED'
         async with httpx.AsyncClient(timeout=20, follow_redirects=False) as client:
-            for model in self.models:
-                last = model == self.models[-1]
+            for model in models:
+                last = model == models[-1]
                 body = {'model': model, 'temperature': 0.1, 'max_completion_tokens': max_tokens, 'messages': messages,
                         'response_format': {'type': 'json_schema', 'json_schema': {'name': name, 'strict': True, 'schema': schema}}}
                 if model.startswith('openai/gpt-oss-'):
@@ -244,18 +262,19 @@ class GroqProvider:
                 except (httpx.TimeoutException, httpx.TransportError) as exc:
                     error = type(exc).__name__
                     continue
-                if response.status_code == 429 or response.status_code >= 500:
-                    error = f'HTTP_{response.status_code}_PROVIDER_REJECTED'
-                    continue
                 if response.is_error:
-                    raise ProviderError(f'HTTP_{response.status_code}_PROVIDER_REJECTED')
+                    error = f'HTTP_{response.status_code}_{groq_error_code(response)}'
+                    # Quota, outages and a failed structured generation are worth one try on the other model.
+                    if response.status_code == 429 or response.status_code >= 500 or 'json_validate_failed' in error:
+                        continue
+                    raise ProviderError(error)
                 try:
                     raw = response.json()
                     content = raw['choices'][0]['message']['content']
                 except (ValueError, KeyError, IndexError, TypeError) as exc:
                     raise ProviderError(type(exc).__name__) from None
                 usage = raw.get('usage', {})
-                return content, {'provider': self.name, 'model': model, 'fallback': model != self.model, 'rate_limit_wait_s': waited,
+                return content, {'provider': self.name, 'model': model, 'fallback': model != models[0], 'rate_limit_wait_s': waited,
                     'input_tokens': usage.get('prompt_tokens'), 'output_tokens': usage.get('completion_tokens'),
                     'total_tokens': usage.get('total_tokens')}
         raise ProviderError(error)

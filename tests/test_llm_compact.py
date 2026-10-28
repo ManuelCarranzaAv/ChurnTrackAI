@@ -172,3 +172,30 @@ def test_malformed_success_response_falls_back_safely(monkeypatch):
     monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:real_client(transport=httpx.MockTransport(lambda request:httpx.Response(200,json=None)),**kwargs))
     with pytest.raises(ProviderError):
         asyncio.run(GroqProvider().choose(rows(1)))
+
+
+def test_groq_failed_json_generation_tries_fallback_and_reports_safe_code(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY','test-placeholder')
+    real_client=httpx.AsyncClient
+    calls=[]
+    def respond(request):
+        calls.append(json.loads(request.content)['model'])
+        return httpx.Response(400,json={'error':{'message':'PRIVATE generated text','code':'json_validate_failed'}})
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:real_client(transport=httpx.MockTransport(respond),**kwargs))
+    with pytest.raises(ProviderError,match='HTTP_400_json_validate_failed') as caught:
+        asyncio.run(GroqProvider().choose(rows(1)))
+    assert len(calls)==2 and 'PRIVATE' not in str(caught.value)
+
+
+def test_groq_spreads_stages_over_both_model_quotas(monkeypatch):
+    monkeypatch.setenv('GROQ_API_KEY','test-placeholder')
+    real_client=httpx.AsyncClient
+    calls=[]
+    def respond(request):
+        calls.append(json.loads(request.content)['model'])
+        return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps({'choices':[{'index':0,'action':'approve_plan','evidence':['probability'],'reason':''}]})}}],'usage':{'total_tokens':5}})
+    monkeypatch.setattr(httpx,'AsyncClient',lambda **kwargs:real_client(transport=httpx.MockTransport(respond),**kwargs))
+    provider=GroqProvider()
+    _,usage=asyncio.run(provider.review(rows(1),'predictivo'))
+    asyncio.run(provider.review(rows(1),'supervisor'))
+    assert calls==['openai/gpt-oss-20b','openai/gpt-oss-120b'] and not usage['fallback']

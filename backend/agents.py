@@ -231,7 +231,7 @@ async def review_stage(stage, request, state, provider, store, model=None):
             code = str(exc)
             state.llm_attempts.append({'agent':stage,'attempt':attempt,'status':'failed','code':code,'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
             # A malformed answer (skipped customer, unsupported action) gets one more chance; HTTP errors and quota do not.
-            retry = attempt == 1 and not code.startswith('HTTP_') and code != 'LLM_NOT_CONFIGURED' and store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50')))
+            retry = attempt == 1 and (not code.startswith('HTTP_') or 'json_validate_failed' in code) and code != 'LLM_NOT_CONFIGURED' and store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50')))
             state.send('llm',stage,stage+'_llm_result',{'error':code},'retry' if retry else 'error')
             if not retry:
                 report.update(status='failed',reason=explain_error(code))
@@ -513,7 +513,7 @@ class StrategistAgent:
                     except (ProviderError, ValidationError) as exc:
                         code = str(exc) if isinstance(exc, ProviderError) else 'INVALID_SUMMARY'
                         state.llm_attempts.append({'agent':'estratega','attempt':attempt,'status':'failed','code':code,'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
-                        retry = attempt == 1 and not code.startswith('HTTP_') and code != 'LLM_NOT_CONFIGURED' and self.store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50')))
+                        retry = attempt == 1 and (not code.startswith('HTTP_') or 'json_validate_failed' in code) and code != 'LLM_NOT_CONFIGURED' and self.store.reserve_call(int(os.getenv('LLM_DAILY_LIMIT','50')))
                         state.send('llm','estratega','executive_summary_result',{'error':code},'retry' if retry else 'error')
                         if not retry:
                             report.update(status='failed', reason=explain_error(code))

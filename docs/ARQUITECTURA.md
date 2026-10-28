@@ -1,5 +1,21 @@
 # Arquitectura (v2)
 
+```mermaid
+flowchart LR
+  U([Usuario<br/>navegador]) -->|CSV / JSON / demo| API[FastAPI en Vercel<br/>validación, límites, CSP]
+  API -->|NDJSON en vivo| U
+  API --> SUP{{Agente Supervisor<br/>orquesta y valida}}
+  SUP -->|delegate_prediction| PRED[Agente Predictivo]
+  PRED -->|inferencia| NN[(Red neuronal<br/>6-32-16-8-1)]
+  SUP -->|delegate_retention| RET[Agente Retención]
+  RET -->|what-if| NN
+  SUP -->|delegate_executive_summary| EST[Agente Estratega]
+  PRED & RET & SUP & EST -.->|JSON con esquema estricto| LLM[(Groq<br/>gpt-oss-120b)]
+  SUP --> ST[(Estado compartido<br/>SharedState + traza)]
+  ST --> H([Decisión humana<br/>aceptar / rechazar / exportar])
+  API --- DB[(SQLite /tmp o PostgreSQL<br/>cuotas e historial privado)]
+```
+
 ```text
 Navegador (HTML/CSS/JS)
    │  JSON / CSV

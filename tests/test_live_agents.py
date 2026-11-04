@@ -91,3 +91,33 @@ def test_unexpected_provider_exception_falls_back_without_stopping(client):
     run=events(client.post('/api/public/analyze-stream?demo=10&use_llm=true&consent=true'))[-1]['run']
     assert run['status']=='completed' and run['agent_llm']['predictivo']['status']=='failed'
     assert run['agent_llm']['retencion']['status']=='validated'
+
+def test_demo10_is_random_but_always_balanced(client):
+    ids=[]
+    for _ in range(4):
+        run=client.post('/api/demo?size=10').json()
+        assert run['summary']['customers']==10 and run['summary']['high']>=5 and run['summary']['medium']==2 and run['summary']['low']==3
+        assert {r['action'] for r in run['recommendations']}>={'claims','payments','reactivate','monitor','review_data'}
+        ids.append(tuple(sorted(p['cliente_id'] for p in run['predictions'])))
+    assert len(set(ids))>1
+    a,b=client.get('/api/example-10.csv').text,client.get('/api/example-10.csv').text
+    assert a!=b and a.splitlines()[0].startswith('cliente_id') and len(a.splitlines())==11
+
+def test_agents_approve_and_escalate_only_exceptions(client):
+    provider=ThreeStageProvider();client.app.state.supervisor.retention.provider=provider
+    ev=events(client.post('/api/public/analyze-stream?demo=10&use_llm=true&consent=true'))
+    run=ev[-1]['run']
+    verdicts={r['cliente_id']:r['agent_verdict'] for r in run['recommendations']}
+    assert all(v in ('approved','escalated') for v in verdicts.values())
+    assert all(r['agent_verdict']=='escalated' for r in run['recommendations'] if r['action']=='review_data')
+    msg=next(m for m in ev if m.get('tool')=='agent_verdicts')
+    assert msg['brief']['approved']==sum(v=='approved' for v in verdicts.values())
+    # Every LLM result tells the UI which API answered.
+    api=[m['brief']['api'] for m in ev if m.get('type')=='message' and m['sender']=='llm' and m['brief'].get('api')]
+    assert len(api)>=3 and all('model' in a and 'ms' in a for a in api)
+    ex=run['executive']
+    assert ex['source']=='llm' and len(ex['narrative'])>=60 and ex['api']['model']
+
+def test_rule_summary_has_a_natural_language_recommendation(client):
+    ex=client.post('/api/demo?size=10').json()['executive']
+    assert ex['source']=='rules' and 'Recomiendo' in ex['narrative'] and 'aprobaron' in ex['narrative']

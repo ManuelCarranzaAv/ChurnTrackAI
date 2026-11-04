@@ -42,3 +42,12 @@ assert.equal(st.predictivo.state,'llm');assert.equal(st.supervisor.state,'workin
 st=agentStates(trace);
 assert.equal(st.predictivo.state,'working');assert.ok(st.predictivo.llmFailed);assert.equal(st.predictivo.llm,1);
 console.log('6 comprobaciones de narración de agentes correctas');
+
+// Each LLM result names the API call that produced it.
+{
+ const {narrate:n}=require('../frontend/core.js');
+ const m={tool:'supervisor_llm_result',sender:'llm',status:'ok',brief:{choices:2,actions:{approve_plan:2},api:{provider:'groq',model:'openai/gpt-oss-120b',ms:1834,tokens:2255}}};
+ assert.match(n(m),/^Groq API \(gpt-oss-120b\) respondió en 1[.,]8 s con 2[.,]255 tokens\. Revisión validada/);
+ assert.match(n({tool:'agent_verdicts',sender:'supervisor',status:'ok',brief:{approved:9,escalated:1}}),/Apruebo 9 propuestas y paso 1 a revisión humana/);
+ console.log('2 comprobaciones de llamadas a la API correctas');
+}

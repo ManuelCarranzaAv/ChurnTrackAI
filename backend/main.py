@@ -20,6 +20,7 @@ from .model import NeuralModel, ROOT
 from .schemas import AnalysisRequest, Customer, Decision, FEATURES
 from .storage import Store
 from .llm import configured_provider, ProviderError, explain_error
+from .demo import random_portfolio, to_csv
 
 load_dotenv(ROOT / '.env')
 MAX_BODY = 256_000
@@ -74,7 +75,7 @@ def create_app(db_url=None):
     store = Store(db_url or os.getenv('DATABASE_URL') or f'sqlite:///{(RUNTIME / "churn.db").as_posix()}')
     model = NeuralModel()
     supervisor = SupervisorAgent(model,configured_provider(),store)
-    app = FastAPI(title='ChurnTrackAI',version='2.3.1',docs_url=None,redoc_url=None,openapi_url=None)
+    app = FastAPI(title='ChurnTrackAI',version='2.4.0',docs_url=None,redoc_url=None,openapi_url=None)
     app.add_middleware(BodyLimit)
     app.state.store, app.state.supervisor = store, supervisor
     app.state.calls = []
@@ -118,7 +119,7 @@ def create_app(db_url=None):
             with store.engine.connect() as db:
                 from sqlalchemy import text
                 db.execute(text('SELECT 1'))
-            return {'status':'ok','model':'loaded','database':'ok','version':'2.3.1'}
+            return {'status':'ok','model':'loaded','database':'ok','version':'2.4.0'}
         except Exception:
             return JSONResponse({'status':'degraded','database':'unavailable'},503)
 
@@ -162,6 +163,9 @@ def create_app(db_url=None):
             raise HTTPException(422,'La demostración admite 10, 12, 24 o 300 clientes sintéticos.')
         if size == 12:
             return json.loads((ROOT/'data/demo.json').read_text(encoding='utf-8'))
+        if size == 10:
+            # A new balanced sample every time, so the test portfolio is never the same ten customers.
+            return random_portfolio(model)
         name = {10:'demo-10.csv',24:'demo-24.csv'}.get(size,'example-300.csv')
         with (ROOT/'data'/name).open(encoding='utf-8') as source:
             return list(csv.DictReader(source))
@@ -353,7 +357,7 @@ def create_app(db_url=None):
 
     @app.get('/api/example-10.csv')
     def example_10():
-        return FileResponse(ROOT/'data/demo-10.csv',media_type='text/csv',filename='cartera_10_clientes_sinteticos.csv')
+        return Response(to_csv(random_portfolio(model)),media_type='text/csv',headers={'Content-Disposition':'attachment; filename="cartera_10_clientes_aleatoria.csv"','Cache-Control':'no-store'})
 
     @app.get('/api/example-24.csv')
     def example_24():

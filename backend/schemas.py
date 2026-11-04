@@ -66,6 +66,8 @@ class Recommendation(StrictModel):
     simulation: dict | None = None
     rule_baseline: str = ''
     llm_reason: str = ''
+    # The agents' own verdict: approved plans need no extra sign-off; escalated ones go to a person.
+    agent_verdict: Literal['', 'approved', 'escalated'] = ''
     decision: Literal['pending', 'approved', 'rejected'] = 'pending'
 
 class Message(StrictModel):
@@ -91,5 +93,6 @@ class LLMResponse(StrictModel):
 
 class ExecutiveSummary(StrictModel):
     headline: str = Field(min_length=10, max_length=180)
+    narrative: str = Field(min_length=60, max_length=1400)
     findings: list[str] = Field(min_length=2, max_length=4)
     actions: list[str] = Field(min_length=2, max_length=4)

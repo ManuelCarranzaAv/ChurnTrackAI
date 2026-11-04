@@ -26,11 +26,11 @@
   const sim=r.simulation;
   return {cliente_id:customerId,action:title,owner:r.owner||'Por asignar',timeframe:r.timeframe||'Por acordar',steps:(r.steps||[]).join(' | '),success_check:r.success_check||'',risk:p.risk,
    probability:p.probability!=null?Number(p.probability).toFixed(4):'',revenue_at_risk:p.revenue_at_risk!=null?Math.round(p.revenue_at_risk):'',
-   modeled_reduction:sim?Number(sim.risk_reduction).toFixed(4):'',decision:r.decision,source:r.source,synthetic:!!run.demo,execution:'Propuesta; no ejecutada',draft,internal};
+   modeled_reduction:sim?Number(sim.risk_reduction).toFixed(4):'',decision:r.decision,decided_by:{agentes:'agentes',persona:'persona'}[r.decided_by]||'',source:r.source,synthetic:!!run.demo,execution:'Propuesta; no ejecutada',draft,internal};
  }
 
  function planCsv(run,actions={}){
-  const columns=['cliente_id','action','owner','timeframe','steps','success_check','risk','probability','revenue_at_risk','modeled_reduction','decision','source','synthetic','execution'];
+  const columns=['cliente_id','action','owner','timeframe','steps','success_check','risk','probability','revenue_at_risk','modeled_reduction','decision','decided_by','source','synthetic','execution'];
   // Spreadsheet formula injection guard: prefix risky leading characters.
   const cell=value=>'"'+String(value??'').replace(/^[=+@-]/,"'$&").replaceAll('"','""')+'"';
   return '﻿'+[columns,...run.recommendations.map(r=>{const p=actionPackage(run,r.cliente_id,actions);return columns.map(c=>p[c]);})].map(row=>row.map(cell).join(';')).join('\r\n');
@@ -45,6 +45,12 @@
   return rows.sort((a,b)=>{const x=f(a),y=f(b);return x<y?-1:x>y?1:0;});
  }
 
+ // One LLM call, as the UI reports it: which API and model answered, how fast and with how many tokens.
+ function apiText(a){
+  if(!a)return '';
+  const prov={groq:'Groq',gemini:'Gemini'}[a.provider]||a.provider||'LLM';
+  return `${prov} API (${String(a.model||'').replace('openai/','')}${a.fallback?', modelo de respaldo':''}) respondió en ${(a.ms/1000).toLocaleString('es-PE',{maximumFractionDigits:1})} s${a.tokens?` con ${Number(a.tokens).toLocaleString('es-PE')} tokens`:''}. `;
+ }
  const NAMES={supervisor:'Supervisor',predictivo:'Predictivo',retencion:'Retención',estratega:'Estratega',llm:'LLM',usuario:'Tú'};
  const plural=(n,one,many)=>`${n} ${n===1?one:many}`;
  const actionList=a=>Object.entries(a||{}).sort((x,y)=>y[1]-x[1]).map(([k,n])=>`${n} ${(ACTION_LABELS[k]||k).toLowerCase()}`).join(', ');
@@ -59,22 +65,23 @@
    case 'delegate_prediction':return 'Delego al Predictivo: validar los datos, calcular el riesgo y explicar sus factores.';
    case 'neural_inference_and_mean_ablation':return `Calculé el riesgo con la red neuronal: ${b.high} alto, ${b.medium} medio, ${b.low} bajo${b.out_of_domain?`. ${plural(b.out_of_domain,'registro queda','registros quedan')} fuera del dominio del modelo`:''}.`;
    case 'predictivo_llm_request':return `Envío ${plural(b.customers,'perfil','perfiles')} sin código de cliente al LLM para interpretar el riesgo.`;
-   case 'predictivo_llm_result':return `Interpretación validada para ${plural(b.choices,'cliente','clientes')}${b.actions?.review_data?` (${b.actions.review_data} con datos a revisar)`:''}.${rest}`;
+   case 'predictivo_llm_result':return `${apiText(b.api)}Interpretación validada para ${plural(b.choices,'cliente','clientes')}${b.actions?.review_data?` (${b.actions.review_data} con datos a revisar)`:''}.${rest}`;
    case 'delegate_retention':return 'Delego a Retención: elegir una acción sustentada para cada cliente.';
    case 'structured_selection_request':return `Pido al LLM elegir la acción de ${plural(b.customers,'cliente','clientes')}, con el impacto simulado de cada palanca como evidencia.`;
-   case 'validated_json':return `Selección validada: ${actionList(b.actions)}.${rest}`;
+   case 'validated_json':return `${apiText(b.api)}Selección validada: ${actionList(b.actions)}.${rest}`;
    case 'provider_call':return `La llamada al LLM falló (${b.error||'error'}).`;
    case 'llm_unavailable':return 'El LLM no está configurado: aplico reglas explícitas.';
    case 'daily_budget':return 'Se agotó el presupuesto diario del LLM: aplico reglas explícitas.';
    case 'recommendations':return `${b.correction?'Corrección entregada: ':''}${plural(b.customers,'plan propuesto','planes propuestos')} — ${actionList(b.actions)}.`;
    case 'request_correction':return 'Encontré propuestas inconsistentes: pido a Retención rehacerlas con reglas.';
    case 'supervisor_llm_request':return `Pido al LLM una segunda revisión de ${plural(b.customers,'propuesta','propuestas')}.`;
-   case 'supervisor_llm_result':return `Revisión validada: ${review(b.actions)}.${rest}`;
+   case 'supervisor_llm_result':return `${apiText(b.api)}Revisión validada: ${review(b.actions)}.${rest}`;
    case 'delegate_executive_summary':return 'Delego al Estratega el resumen para gerencia.';
    case 'executive_summary_request':return `Envío ${plural(b.facts,'hecho verificado','hechos verificados')} al LLM, sin códigos de cliente.`;
-   case 'executive_summary_result':return b.validated?'Borrador aceptado: todas sus cifras existen en los datos verificados.':'Borrador rechazado.';
-   case 'executive_summary':return `Resumen listo (${b.source==='llm'?'redactado por LLM':'por reglas'}): «${b.headline}».`;
-   case 'validated_report':return 'Informe validado y entregado. No se ejecutó ninguna acción externa: la decisión es tuya.';
+   case 'executive_summary_result':return b.validated?`${apiText(b.api)}Recomendación aceptada: todas sus cifras existen en los datos verificados.`:'Borrador rechazado.';
+   case 'agent_verdicts':return `Apruebo ${plural(b.approved,'propuesta','propuestas')}${b.escalated?` y paso ${b.escalated} a revisión humana (datos fuera de dominio o dudas del LLM)`:'; ninguna necesita revisión humana'}.`;
+   case 'executive_summary':return `Recomendación final lista (${b.source==='llm'?'redactada con el LLM':'redactada por reglas'}): «${b.headline}».`;
+   case 'validated_report':return b.approved_by_agents!=null?`Plan entregado: ${plural(b.approved_by_agents,'acción aprobada','acciones aprobadas')} por los agentes${b.escalated_to_human?` y ${b.escalated_to_human} para tu revisión`:''}. No se ejecutó ninguna acción externa: tú confirmas el plan.`:'Informe validado y entregado. No se ejecutó ninguna acción externa.';
    case 'execution_failed':return 'La ejecución se interrumpió.';
    default:return m.tool;
   }
@@ -95,6 +102,6 @@
   return s;
  }
 
- const api={FEATURES,LABELS,ACTION_LABELS,QUADRANTS,NAMES,money,pct,approvePendingLocal,actionPackage,planCsv,filterCustomers,narrate,agentStates};
+ const api={FEATURES,LABELS,ACTION_LABELS,QUADRANTS,NAMES,money,pct,approvePendingLocal,actionPackage,planCsv,filterCustomers,narrate,agentStates,apiText};
  if(typeof module!=='undefined')module.exports=api;else root.Core=api;
 })(typeof window!=='undefined'?window:globalThis);

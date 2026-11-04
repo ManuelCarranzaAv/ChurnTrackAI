@@ -115,10 +115,12 @@ def brief(tool, payload):
     if 'input' in payload:
         return {'customers':len(payload['input']),'identifiers_removed':payload.get('identifiers_removed',False)}
     if 'choices' in payload:
-        return {'choices':len(payload['choices']),'actions':dict(Counter(c['action'] for c in payload['choices'])),'deterministic_only':payload.get('deterministic_only',0)}
+        return {'choices':len(payload['choices']),'actions':dict(Counter(c['action'] for c in payload['choices'])),'deterministic_only':payload.get('deterministic_only',0),'api':payload.get('api')}
+    if 'verdicts' in payload:
+        return payload['verdicts']
     if 'facts' in payload:
         return {'facts':len(payload['facts'].get('hechos_verificados',payload['facts']))}
-    return {k:v for k,v in payload.items() if isinstance(v,(str,int,float,bool))}
+    return {k:v for k,v in payload.items() if isinstance(v,(str,int,float,bool)) or (k=='api' and isinstance(v,dict))}
 
 def _number(token):
     """Parse '1,500', '0.2723', '99,9' or '7' as a float; None if ambiguous."""
@@ -152,6 +154,11 @@ def checked_reason(reason, p, model=None):
         if value is None or not any(abs(value-k) <= tolerance for k in known):
             return ''
     return reason
+
+def api_call(provider, usage, start):
+    """What the UI shows for one LLM call: which API and model answered, tokens and latency."""
+    return {'provider':getattr(provider,'name','llm'),'api':getattr(provider,'api',''),'model':usage.get('model') or getattr(provider,'model',''),
+            'tokens':usage.get('total_tokens'),'ms':round((time.perf_counter()-start)*1000),'fallback':bool(usage.get('fallback'))}
 
 async def guarded(call):
     """Any unexpected provider failure becomes a ProviderError, so the agent falls back instead of stopping the run."""
@@ -222,7 +229,7 @@ async def review_stage(stage, request, state, provider, store, model=None):
             choices = [{**c.model_dump(),'reason':checked_reason(c.reason,state.predictions[c.index],model)} for c in valid]
             kept = [c['index'] for c in choices]
             report.update(status='validated',checked_indices=kept,choices=choices,usage=usage,deterministic_only=len(indices)-len(kept))
-            state.send('llm',stage,stage+'_llm_result',{'choices':[c.model_dump() for c in valid],'deterministic_only':len(indices)-len(kept)})
+            state.send('llm',stage,stage+'_llm_result',{'choices':[c.model_dump() for c in valid],'deterministic_only':len(indices)-len(kept),'api':api_call(provider,usage,start)})
             state.llm_attempts.append({'agent':stage,'attempt':attempt,'status':'validated','model':usage.get('model'),'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
             if stage=='supervisor' and any(c.action=='request_review' for c in response.choices):
                 state.warnings.append('El supervisor LLM solicita revisión humana adicional para algunas propuestas; consulta sus observaciones antes de aceptar.')
@@ -289,7 +296,7 @@ class RetentionAgent:
                     grounded = lambda c: allowed(state.predictions[c.index]) if set(ACTIONS.get(c.action,('',['?']))[1]).issubset(c.evidence) else []
                     valid = accepted_choices(response.choices, set(candidates), state.predictions, grounded, partial=attempt == 1)
                     selections = {c.index:c for c in valid}
-                    state.send('llm','retencion','validated_json',{'choices':[c.model_dump() for c in valid],'deterministic_only':len(candidates)-len(valid)})
+                    state.send('llm','retencion','validated_json',{'choices':[c.model_dump() for c in valid],'deterministic_only':len(candidates)-len(valid),'api':api_call(self.provider,usage,attempt_start)})
                     state.llm_attempts.append({'agent':'retencion','attempt':attempt+1,'status':'validated','model':usage.get('model'),'elapsed_ms':round((time.perf_counter()-attempt_start)*1000,2)})
                     state.mode = 'mixed' if len(state.predictions) > llm_batch() else 'llm'
                     break
@@ -340,6 +347,14 @@ class SupervisorAgent:
                 return False
         return True
 
+    def verdicts(self, state):
+        reviews = {c['index']:c['action'] for c in state.agent_llm.get('supervisor',{}).get('choices',[])}
+        for i, r in enumerate(state.recommendations):
+            # Escalate what the reviewer flags and anything built on out-of-domain data.
+            r.agent_verdict = 'escalated' if reviews.get(i) == 'request_review' or r.action == 'review_data' else 'approved'
+        approved = sum(r.agent_verdict == 'approved' for r in state.recommendations)
+        state.send('supervisor','usuario','agent_verdicts',{'verdicts':{'approved':approved,'escalated':len(state.recommendations)-approved}})
+
     async def run(self, request, persist=True, demo=False, listener=None):
         state = SharedState()
         state._listener = listener
@@ -358,9 +373,10 @@ class SupervisorAgent:
             if not self.validate(state):
                 raise RuntimeError('SUPERVISOR_REJECTED')
             await review_stage('supervisor',request,state,self.retention.provider,self.store,self.model)
+            self.verdicts(state)
             state.send('supervisor','estratega','delegate_executive_summary',{'task':'portfolio summary from verified aggregates'},'delegated')
-            await self.strategist.execute(request,state,portfolio(state.predictions),self.retention.provider)
-            state.send('supervisor','usuario','validated_report',{'approved_for_human_review':True,'external_actions_executed':0})
+            await self.strategist.execute(request,state,portfolio(state.predictions),self.retention.provider,self.model)
+            state.send('supervisor','usuario','validated_report',{'approved_by_agents':sum(r.agent_verdict=='approved' for r in state.recommendations),'escalated_to_human':sum(r.agent_verdict=='escalated' for r in state.recommendations),'external_actions_executed':0})
             state.status = 'completed'
         try:
             await asyncio.wait_for(workflow(), timeout=60)
@@ -415,11 +431,19 @@ FEATURE_NAMES = {'antiguedad':'antigüedad','compras_mensuales':'compras mensual
 def money(value):
     return f'S/ {value:,.0f}'
 
-def executive_facts(analytics):
+ACTION_NAMES = {'contact':'contacto preventivo','monitor':'seguimiento comercial','reactivate':'reactivación','claims':'resolver reclamos','payments':'regularizar pagos','review_data':'validar datos'}
+
+def executive_facts(analytics, recommendations=()):
     """Verified aggregates handed to the strategist; every number it may cite comes from here."""
     seg = {s['risk']: s for s in analytics['segments']}
     quad = analytics['quadrants']
+    approved = [r for r in recommendations if r.agent_verdict == 'approved']
+    plan = Counter(ACTION_NAMES.get(r.action, r.action) for r in recommendations)
     return {
+        'plan_acciones': [f'{n} {name}' for name, n in plan.most_common()],
+        'plan_aprobadas_por_agentes': len(approved),
+        'plan_para_revision_humana': len(recommendations) - len(approved),
+        'ingreso_protegido_plan_aprobado': money(sum(r.simulation['revenue_protected_monthly'] for r in approved if r.simulation)),
         'clientes': analytics['count'],
         'clientes_riesgo_alto': seg['ALTO']['count'],
         'porcentaje_riesgo_alto': f"{seg['ALTO']['share']*100:.0f}%",
@@ -452,6 +476,9 @@ def fact_sentences(f):
         f"Segmento Automatizar (menor valor y en riesgo): {f['cuadrante_automatizar']} clientes. Segmento Proteger (alto valor, estable): {f['cuadrante_proteger']} clientes.",
         f"Registros fuera del dominio del modelo: {f['fuera_de_dominio']}.",
         f"Variables con mayor sensibilidad en el modelo: {', '.join(f['variables_mas_sensibles']) or 'sin datos'}.",
+        *([f"Plan propuesto por el agente de Retención: {', '.join(f['plan_acciones'])}.",
+           f"El Supervisor aprobó {f['plan_aprobadas_por_agentes']} acciones y dejó {f['plan_para_revision_humana']} para revisión humana.",
+           f"Si las acciones aprobadas logran su objetivo, el modelo estima {f['ingreso_protegido_plan_aprobado']} de ingreso mensual protegido."] if f['plan_acciones'] else []),
     ]
 
 def rule_summary(f):
@@ -467,13 +494,20 @@ def rule_summary(f):
     if f['fuera_de_dominio']:
         n = f['fuera_de_dominio']
         actions.append(f"Validar {'el registro' if n == 1 else f'{n} registros'} fuera del dominio del modelo antes de actuar.")
+    narrative = (f"La cartera tiene {f['ingreso_mensual_en_riesgo']} de ingreso mensual en riesgo ({f['porcentaje_ingreso_en_riesgo']} del total) "
+                 f"y {f['clientes_riesgo_alto']} de {f['clientes']} clientes en riesgo alto. "
+                 f"Recomiendo empezar por los {f['cuadrante_rescatar']} clientes de alto valor en riesgo, que concentran {f['ingreso_en_riesgo_rescatar']} mensuales, con un ejecutivo asignado. ")
+    if f.get('plan_acciones'):
+        narrative += (f"El plan tiene {f['plan_aprobadas_por_agentes'] + f['plan_para_revision_humana']} acciones ({', '.join(f['plan_acciones'])}); los agentes ya aprobaron {f['plan_aprobadas_por_agentes']}, que protegerían {f['ingreso_protegido_plan_aprobado']} al mes si se cumplen; "
+                      f"{'quedan ' + str(f['plan_para_revision_humana']) + ' para tu revisión' if f['plan_para_revision_humana'] else 'no queda nada pendiente de revisión'}. ")
+    narrative += 'Son estimaciones de un modelo con datos sintéticos, no pérdidas contables.'
     return {'headline': f"{f['ingreso_mensual_en_riesgo']} de ingreso mensual en riesgo en {f['clientes']} clientes",
-            'findings': findings, 'actions': actions[:4]}
+            'narrative': narrative, 'findings': findings, 'actions': actions[:4]}
 
 def unsupported_numbers(summary, facts):
     """Numeric tokens in the draft that do not appear in the verified facts (small counts excepted)."""
     allowed_tokens = set(NUMBER.findall(json.dumps(facts, ensure_ascii=False))) | {str(i) for i in range(11)} | {'20'}
-    text = ' '.join([summary['headline'], *summary['findings'], *summary['actions']])
+    text = ' '.join([summary['headline'], summary.get('narrative',''), *summary['findings'], *summary['actions']])
     return sorted({t for t in NUMBER.findall(text) if t not in allowed_tokens})
 
 class StrategistAgent:
@@ -481,10 +515,10 @@ class StrategistAgent:
     def __init__(self, store):
         self.store = store
 
-    async def execute(self, request, state, analytics, provider):
+    async def execute(self, request, state, analytics, provider, model=None):
         if not analytics:
             return
-        facts = executive_facts(analytics)
+        facts = executive_facts(analytics, state.recommendations)
         summary = {**rule_summary(facts), 'source': 'rules', 'facts': facts}
         report = {'status': 'not_called'}
         state.agent_llm['estratega'] = report
@@ -507,7 +541,8 @@ class StrategistAgent:
                         # The headline stays deterministic: it is the figure managers read first.
                         summary = {**draft, 'headline': rule_summary(facts)['headline'], 'source': 'llm', 'facts': facts}
                         report.update(status='validated', usage=usage)
-                        state.send('llm','estratega','executive_summary_result',{'validated':True,'numbers_checked':True})
+                        summary['api'] = api_call(provider,usage,start)
+                        state.send('llm','estratega','executive_summary_result',{'validated':True,'numbers_checked':True,'api':summary['api']})
                         state.llm_attempts.append({'agent':'estratega','attempt':attempt,'status':'validated','model':usage.get('model'),'elapsed_ms':round((time.perf_counter()-start)*1000,2)})
                         break
                     except (ProviderError, ValidationError) as exc:

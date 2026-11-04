@@ -20,10 +20,10 @@ class ThreeStageProvider:
     async def narrate(self,facts):
         self.calls.append('estratega')
         if self.invalid:
-            return {'headline':'Riesgo de 999.999 soles inventados','findings':['a','b'],'actions':['c','d']},{'total_tokens':10}
+            return {'headline':'Riesgo de 999.999 soles inventados','narrative':'Recomiendo actuar ya: hay 999.999 soles inventados en riesgo y conviene llamar a todos.','findings':['a','b'],'actions':['c','d']},{'total_tokens':10}
         hechos=facts['hechos_verificados']
         assert all('B2B-' not in h and 'TEST-' not in h for h in hechos)
-        return {'headline':hechos[3],'findings':[hechos[0],'Revisar prioridades.'],
+        return {'headline':hechos[3],'narrative':' '.join(hechos[:2])+' Recomiendo empezar por los clientes de mayor valor.','findings':[hechos[0],'Revisar prioridades.'],
                 'actions':['Contactar a los prioritarios.','Validar datos.']},{'total_tokens':10}
     def result(self,payload,stage='retencion'):
         return LLMResponse(choices=[{'index':999 if self.invalid and stage=='supervisor' else p['index'],

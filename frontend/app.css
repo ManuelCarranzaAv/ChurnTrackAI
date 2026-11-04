@@ -441,10 +441,19 @@ pre.doc{white-space:pre-wrap;background:var(--surface-2);border:1px solid var(--
 .slider input[type=range]{width:100%;accent-color:var(--brand)}
 .slider small{color:var(--muted);font-size:12px}
 .big-prob{font:700 48px/1 var(--font-d);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.cm{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;font-size:13px;max-width:380px}
+.cm{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;font-size:13px;max-width:480px}
 .cm div{padding:12px;border-radius:8px;text-align:center;background:var(--surface-2);border:1px solid var(--line);font-variant-numeric:tabular-nums}
 .cm .hd{background:none;border:0;color:var(--muted);font-size:12px;padding:4px}
-.cm .tp{background:var(--brand-soft);color:var(--brand-strong);font-weight:700}
+.cm .tp,.cm .tn{background:var(--lo-soft);color:var(--lo-ink)}
+.cm .er{background:var(--hi-soft);color:var(--hi-ink)}
+.cm b{display:block;font:700 20px/1.2 var(--font-d)}
+.cm small{display:block;font-size:12px;color:var(--ink-2);margin-top:2px}
+.metric-card{display:flex;flex-direction:column;gap:6px}
+.metric-card .label{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.metric-card .label b{font-size:14px}
+.metric-card .label span{font-size:12px;color:var(--muted)}
+.metric-card .value{font:700 30px/1.1 var(--font-d);letter-spacing:-.02em;color:var(--brand-strong)}
+.metric-card .formula{font-size:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:5px 8px;color:var(--ink-2);overflow-wrap:anywhere}
 .prose{color:var(--ink-2);font-size:13.5px;display:grid;gap:10px}
 .prose ul{margin:0;padding-left:18px;display:grid;gap:5px}
 .health{display:flex;gap:16px;align-items:center}

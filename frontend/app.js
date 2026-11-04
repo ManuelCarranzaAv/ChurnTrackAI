@@ -590,10 +590,7 @@ async function viewModel(){
  const m=S.metrics,k=m.metrics||{},cm=k.confusion_matrix||[[0,0],[0,0]];
  $('view').innerHTML=`
  <div class="page-head"><div><div class="kicker">Transparencia</div><h1>Modelo y método</h1><p>Qué hace cada componente, cómo se midió y qué falta para usarlo en una empresa real.</p></div></div>
- ${m.status==='measured'?`<div class="grid g-4">${[['AUC',k.auc.toFixed(3),'Capacidad de ordenar clientes por riesgo'],['Exactitud',pct(k.accuracy,1),`Línea base «todos abandonan»: ${pct(m.baseline.accuracy,1)}`],['Precisión · Recall',`${pct(k.precision,0)} · ${pct(k.recall,0)}`,`F1 ${k.f1.toFixed(3)}`],['Brier',k.brier.toFixed(3),'Error de probabilidad (menor es mejor)']].map(([l,v,s])=>`<div class="card kpi"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${s}</div></div>`).join('')}</div>
- <div class="grid g-2 mt"><article class="card"><div class="card-head"><div><h2>Curva ROC</h2><p>${m.n.toLocaleString('es-PE')} ejemplos sintéticos nuevos (semilla ${m.seed}).</p></div></div>${roc(m.roc||[])}</article>
-  <article class="card"><h2>Matriz de confusión (umbral 50%)</h2><div class="cm mt"><div class="hd"></div><div class="hd">Predice: se queda</div><div class="hd">Predice: abandona</div><div class="hd">Real: se queda</div><div class="tp">${cm[0][0]}</div><div>${cm[0][1]}</div><div class="hd">Real: abandona</div><div>${cm[1][0]}</div><div class="tp">${cm[1][1]}</div></div>
-   <p class="small muted" style="margin-top:14px">${esc(m.note)}</p></article></div>`:'<div class="card"><p class="muted">Evaluación no disponible.</p></div>'}
+ ${m.status==='measured'?modelMetrics(m,cm):'<div class="card"><p class="muted">Evaluación no disponible.</p></div>'}
  <div class="grid g-2 mt">
   <article class="card prose"><h2>Arquitectura</h2>
    <ul><li><b>Red neuronal</b> densa 6→32→16→8→1 (ReLU, sigmoide), pesos exportados del notebook y ejecutados en Python. Riesgo: bajo &lt; 40%, medio 40–70%, alto ≥ 70%.</li>
@@ -615,6 +612,25 @@ async function viewModel(){
   <li><b>Calibrar</b> probabilidades y fijar umbrales según la capacidad del equipo comercial.</li>
   <li><b>Medir impacto</b> con grupo de control: retención de contactados frente a no contactados.</li>
   <li><b>Operar</b>: roles, base persistente, integración con CRM y monitoreo de deriva.</li></ul></article>`;
+}
+// Classification metrics at the 50% threshold, each shown with its formula on the real confusion matrix.
+function modelMetrics(m,cm){
+ const k=m.metrics,b=m.baseline||{},[[tn,fp],[fn,tp]]=cm,n=tn+fp+fn+tp,f=x=>x.toLocaleString('es-PE');
+ const card=(name,es,v,formula,what,base)=>`<div class="card metric-card"><div class="label"><b>${name}</b><span>${es}</span></div><div class="value">${pct(v,1)}</div>
+  <div class="formula mono">${formula}</div><p class="small ink2">${what}</p>${base?`<p class="small muted">${base}</p>`:''}</div>`;
+ return `<article class="card"><div class="card-head"><div><h2>Métricas de clasificación de la red neuronal</h2><p>${f(n)} clientes sintéticos nuevos (semilla ${m.seed}) · se predice «abandona» cuando la probabilidad es ≥ 50%. Clase positiva: abandona.</p></div><span class="badge llm plain">AUC ${k.auc.toFixed(3)}</span></div>
+  <div class="grid g-4">
+   ${card('Accuracy','Exactitud',k.accuracy,`(VP + VN) / total = (${f(tp)} + ${f(tn)}) / ${f(n)}`,'De cada 100 clientes, cuántos clasifica bien (se va o se queda).',b.accuracy!=null?`Línea base «todos abandonan»: ${pct(b.accuracy,1)}`:'')}
+   ${card('Precision','Precisión',k.precision,`VP / (VP + FP) = ${f(tp)} / (${f(tp)} + ${f(fp)})`,'Cuando alerta «se va», cuántas veces acierta. Evita gastar esfuerzo comercial en falsas alarmas.','')}
+   ${card('Recall','Sensibilidad',k.recall,`VP / (VP + FN) = ${f(tp)} / (${f(tp)} + ${f(fn)})`,'De los clientes que de verdad se van, cuántos detecta a tiempo. Es la métrica clave en churn.','')}
+   ${card('F1-Score','Media armónica',k.f1,`2 · P · R / (P + R) = 2 · ${(k.precision).toFixed(3)} · ${(k.recall).toFixed(3)} / (${(k.precision).toFixed(3)} + ${(k.recall).toFixed(3)})`,'Equilibrio entre precisión y recall en un solo número.',b.f1!=null?`Línea base «todos abandonan»: ${pct(b.f1,1)}`:'')}
+  </div></article>
+ <div class="grid g-2 mt"><article class="card"><div class="card-head"><div><h2>Matriz de confusión (umbral 50%)</h2><p>De dónde salen las cuatro métricas.</p></div></div>
+   <div class="cm"><div class="hd"></div><div class="hd">Predice: se queda</div><div class="hd">Predice: abandona</div>
+    <div class="hd">Real: se queda</div><div class="tn"><b>${f(tn)}</b><small>VN · verdaderos negativos</small></div><div class="er"><b>${f(fp)}</b><small>FP · falsas alarmas</small></div>
+    <div class="hd">Real: abandona</div><div class="er"><b>${f(fn)}</b><small>FN · abandonos no detectados</small></div><div class="tp"><b>${f(tp)}</b><small>VP · abandonos detectados</small></div></div>
+   <p class="small muted" style="margin-top:14px">${esc(m.note)}</p></article>
+  <article class="card"><div class="card-head"><div><h2>Curva ROC</h2><p>AUC ${k.auc.toFixed(3)}: capacidad de ordenar clientes por riesgo. Brier ${k.brier.toFixed(3)} (error de probabilidad; menor es mejor).</p></div></div>${roc(m.roc||[])}</article></div>`;
 }
 function roc(points){
  const W=360,H=250,L=34,B=30,T=8,R=8,x=v=>L+v*(W-L-R),y=v=>T+(1-v)*(H-T-B);
